@@ -295,6 +295,8 @@ function defaultPanel(name){
     id: uid('panel'),
     name: name || 'لوحة جديدة',
     type: 'مختلط',
+    sourceType: 'main', // 'main' (from transformer/utility) | 'sub' (fed from another panel in this project)
+    parentPanelId: null,
     voltage: 400,
     phases: 3,
     insulation: 'pvc',
@@ -402,10 +404,23 @@ function calcLoad(panel, load){
   };
 }
 
-function calcPanelSummary(panel){
+function calcPanelSummary(panel, visited){
+  visited = visited || new Set();
+  const allPanels = (State.currentProject && State.currentProject.panels) || [];
+  const childPanels = allPanels.filter(p => p.parentPanelId === panel.id && !visited.has(p.id));
+  const childVisited = new Set(visited); childVisited.add(panel.id);
+
   const results = panel.loads.map(l=>({load:l, r: calcLoad(panel,l)}));
-  const totalConnectedKW = panel.loads.reduce((s,l)=> s + l.kw*(l.qty||1), 0);
-  const totalIbSum = results.reduce((s,x)=> s + x.r.ib*(x.load.qty||1), 0);
+
+  const childSummaries = childPanels.map(cp => ({panel: cp, summary: calcPanelSummary(cp, childVisited)}));
+
+  const totalConnectedKW = panel.loads.reduce((s,l)=> s + l.kw*(l.qty||1), 0)
+    + childSummaries.reduce((s,c)=> s + c.summary.totalConnectedKW, 0);
+
+  const loadsIbSum = results.reduce((s,x)=> s + x.r.ib*(x.load.qty||1), 0);
+  const childIbSum = childSummaries.reduce((s,c)=> s + c.summary.incomerDesignCurrent, 0);
+  const totalIbSum = loadsIbSum + childIbSum;
+
   const incomerDesignCurrent = totalIbSum * (panel.diversityFactor||1);
   const incomerSel = pickCableAndBreaker(panel, incomerDesignCurrent);
 
@@ -413,6 +428,14 @@ function calcPanelSummary(panel){
   let iscKA;
   if(panel.upstreamIscOverrideKA){
     iscKA = panel.upstreamIscOverrideKA;
+  } else if(panel.sourceType==='sub' && panel.parentPanelId && !visited.has(panel.parentPanelId)){
+    const parent = allPanels.find(p=>p.id===panel.parentPanelId);
+    if(parent){
+      const parentVisited = new Set(visited); parentVisited.add(panel.id);
+      iscKA = calcPanelSummary(parent, parentVisited).iscKA;
+    } else {
+      iscKA = 0;
+    }
   } else {
     const V = panel.voltage;
     const isc = (panel.transformerKVA*1000) / (Math.sqrt(3)*V*(panel.transformerZ/100));
@@ -421,6 +444,7 @@ function calcPanelSummary(panel){
 
   return {
     results,
+    childSummaries,
     totalConnectedKW: round1(totalConnectedKW),
     incomerDesignCurrent: round1(incomerDesignCurrent),
     incomerCableSize: incomerSel.size,
@@ -487,18 +511,36 @@ document.getElementById('btn-new-project').onclick = async ()=>{
 
 /* ============================== RENDER: PANELS LIST ============================== */
 
+function orderedPanelsWithDepth(panels){
+  const byParent = {};
+  panels.forEach(p=>{
+    const key = (p.parentPanelId && panels.some(x=>x.id===p.parentPanelId)) ? p.parentPanelId : '__root__';
+    (byParent[key] = byParent[key]||[]).push(p);
+  });
+  const result = [];
+  function walk(parentKey, depth){
+    (byParent[parentKey]||[]).forEach(p=>{
+      result.push({panel:p, depth});
+      walk(p.id, depth+1);
+    });
+  }
+  walk('__root__', 0);
+  return result;
+}
+
 function renderPanelsList(){
   const list = document.getElementById('panels-list');
   list.innerHTML = '';
   if(!State.currentProject) return;
-  State.currentProject.panels.forEach(panel=>{
+  orderedPanelsWithDepth(State.currentProject.panels).forEach(({panel, depth})=>{
     const row = document.createElement('div');
     const active = State.currentPanelId === panel.id;
     row.className = 'flex items-center gap-1';
+    if(depth>0) row.style.paddingRight = (depth*14)+'px';
     const btn = document.createElement('button');
-    btn.className = 'flex-1 text-right px-2 py-1.5 rounded-md text-xs truncate ' +
+    btn.className = 'flex-1 text-right px-2 py-1.5 rounded-md text-xs truncate flex items-center gap-1 ' +
       (active ? 'bg-[rgba(34,184,207,.16)] text-[var(--copper)] font-bold' : 'hover:bg-[var(--panel-2)]');
-    btn.textContent = panel.name;
+    btn.innerHTML = (depth>0 ? '<span style="opacity:.5">↳</span> ' : '') + escapeHtml(panel.name);
     btn.onclick = ()=>{ State.currentPanelId = panel.id; renderPanelsList(); renderMain(); };
     row.appendChild(btn);
 
@@ -509,6 +551,7 @@ function renderPanelsList(){
     del.onclick = async (e)=>{
       e.stopPropagation();
       if(!(await confirmDialog('حذف اللوحة', 'هل تريد حذف هذه اللوحة؟'))) return;
+      State.currentProject.panels.forEach(p=>{ if(p.parentPanelId===panel.id) p.parentPanelId = null; });
       State.currentProject.panels = State.currentProject.panels.filter(p=>p.id!==panel.id);
       if(State.currentPanelId===panel.id){
         State.currentPanelId = State.currentProject.panels[0] ? State.currentProject.panels[0].id : null;
@@ -579,6 +622,22 @@ function renderMain(){
 
 /* ---- Tab: Loads & panel settings ---- */
 
+function panelOptionsExcluding(panel){
+  if(!State.currentProject) return [];
+  const all = State.currentProject.panels;
+  const excluded = new Set([panel.id]);
+  let changed = true;
+  while(changed){
+    changed = false;
+    all.forEach(p=>{
+      if(p.parentPanelId && excluded.has(p.parentPanelId) && !excluded.has(p.id)){
+        excluded.add(p.id); changed = true;
+      }
+    });
+  }
+  return all.filter(p=>!excluded.has(p.id));
+}
+
 function renderLoadsTab(container, panel){
   container.innerHTML = `
     <div class="bg-[var(--panel)] rounded-xl border border-[var(--border)] p-4 mb-5">
@@ -586,6 +645,21 @@ function renderLoadsTab(container, panel){
       <div class="grid grid-cols-2 gap-3">
         <div class="field"><label>اسم اللوحة</label><input id="f-name" type="text" value="${escapeAttr(panel.name)}"></div>
         <div class="field"><label>الجهد (V)</label><input id="f-voltage" type="number" value="${panel.voltage}"></div>
+      </div>
+
+      <div class="mt-3 pt-3 border-t border-[var(--border)]">
+        <div class="field"><label>مصدر تغذية اللوحة</label>
+          <select id="f-sourcetype">
+            <option value="main" ${panel.sourceType!=='sub'?'selected':''}>مصدر رئيسي (محول / مرفق كهرباء)</option>
+            <option value="sub" ${panel.sourceType==='sub'?'selected':''}>لوحة تانية في نفس المشروع (لوحة فرعية)</option>
+          </select>
+        </div>
+        <div id="parent-panel-field" class="field mt-2" style="display:${panel.sourceType==='sub'?'block':'none'}">
+          <label>تتغذى من لوحة:</label>
+          ${panelOptionsExcluding(panel).length===0
+            ? '<p class="text-[11px] text-[var(--warn)]">لا توجد لوحات تانية في المشروع بعد لتختار منها — أضف لوحة عمومية الأول.</p>'
+            : `<select id="f-parentpanel">${panelOptionsExcluding(panel).map(p=>`<option value="${p.id}" ${panel.parentPanelId===p.id?'selected':''}>${escapeHtml(p.name)}</option>`).join('')}</select>`}
+        </div>
       </div>
 
       <button id="btn-toggle-advanced" class="text-[var(--copper)] text-xs font-bold mt-3">⚙ إعدادات متقدمة (اختياري) ▾</button>
@@ -607,10 +681,11 @@ function renderLoadsTab(container, panel){
           <div class="field"><label>عدد الدوائر المتجاورة</label><input id="f-group" type="number" min="1" max="8" value="${panel.groupingCircuits}"></div>
           <div class="field"><label>عامل التنويع للقاطع الرئيسي</label><input id="f-diversity" type="number" step="0.05" value="${panel.diversityFactor}"></div>
           <div class="field"><label>طول كابل التغذية الرئيسي (م)</label><input id="f-incomerlen" type="number" value="${panel.incomerCableLength}"></div>
-          <div class="field"><label>سعة المحول (kVA)</label><input id="f-kva" type="number" value="${panel.transformerKVA}"></div>
-          <div class="field"><label>%Z للمحول</label><input id="f-z" type="number" step="0.1" value="${panel.transformerZ}"></div>
+          <div class="field" id="f-kva-field"><label>سعة المحول (kVA)</label><input id="f-kva" type="number" value="${panel.transformerKVA}"></div>
+          <div class="field" id="f-z-field"><label>%Z للمحول</label><input id="f-z" type="number" step="0.1" value="${panel.transformerZ}"></div>
           <div class="field"><label>أو Isc مباشرة (kA)</label><input id="f-iscoverride" type="number" step="0.1" value="${panel.upstreamIscOverrideKA ?? ''}" placeholder="اختياري"></div>
         </div>
+        ${panel.sourceType==='sub' ? '<p class="text-[10px] text-[var(--ink-soft)] mt-2">اللوحة دي فرعية، فبيانات المحول مش مستخدمة إلا لو حددت Isc يدوياً.</p>' : ''}
       </div>
       <button id="btn-save-panel" class="btn-copper mt-4 rounded-lg px-4 py-2 text-xs">حفظ</button>
     </div>
@@ -625,6 +700,10 @@ function renderLoadsTab(container, panel){
     </div>
   `;
 
+  document.getElementById('f-sourcetype').onchange = (e)=>{
+    document.getElementById('parent-panel-field').style.display = e.target.value==='sub' ? 'block' : 'none';
+  };
+
   document.getElementById('btn-toggle-advanced').onclick = ()=>{
     const el = document.getElementById('advanced-settings');
     const btn = document.getElementById('btn-toggle-advanced');
@@ -636,6 +715,9 @@ function renderLoadsTab(container, panel){
   document.getElementById('btn-save-panel').onclick = async ()=>{
     panel.name = document.getElementById('f-name').value || panel.name;
     panel.voltage = num(document.getElementById('f-voltage').value, panel.voltage);
+    panel.sourceType = document.getElementById('f-sourcetype').value;
+    const parentSel = document.getElementById('f-parentpanel');
+    panel.parentPanelId = (panel.sourceType==='sub' && parentSel && parentSel.value) ? parentSel.value : null;
     panel.insulation = document.getElementById('f-insulation').value;
     panel.installMethod = document.getElementById('f-install').value;
     panel.ambientTemp = num(document.getElementById('f-temp').value, panel.ambientTemp);
@@ -740,6 +822,7 @@ function renderLoadsCards(panel){
 
 function renderResultsTab(container, panel){
   const summary = calcPanelSummary(panel);
+  const hasChildren = summary.childSummaries && summary.childSummaries.length > 0;
   container.innerHTML = `
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
       ${statCard('إجمالي الحمل الموصّل', summary.totalConnectedKW+' kW')}
@@ -749,6 +832,27 @@ function renderResultsTab(container, panel){
       ${statCard('مستوى قصر الدائرة عند المصدر (تقريبي)', summary.iscKA+' kA')}
       ${statCard('عامل التنويع المستخدم', panel.diversityFactor)}
     </div>
+
+    ${hasChildren ? `
+    <div class="bg-[var(--panel)] rounded-xl border border-[var(--border)] p-4 overflow-x-auto mb-5">
+      <h3 class="font-bold text-sm mb-3 text-[var(--navy)]">اللوحات الفرعية المتغذية من هنا</h3>
+      <table class="data-table w-full text-xs mono">
+        <thead><tr>
+          <th>اللوحة</th><th>إجمالي حملها kW</th><th>تيار التصميم Ib (A)</th><th>مقطع الكابل مم²</th><th>القاطع (A)</th>
+        </tr></thead>
+        <tbody>
+          ${summary.childSummaries.map(({panel:cp, summary:cs})=>`
+            <tr>
+              <td class="font-bold">↳ ${escapeHtml(cp.name)}</td>
+              <td>${cs.totalConnectedKW}</td>
+              <td>${cs.incomerDesignCurrent}</td>
+              <td>${cs.incomerCableSize}</td>
+              <td>${cs.incomerBreaker}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>` : ''}
 
     <div class="bg-[var(--panel)] rounded-xl border border-[var(--border)] p-4 overflow-x-auto">
       <h3 class="font-bold text-sm mb-3 text-[var(--navy)]">نتائج كل حمل</h3>
@@ -795,7 +899,8 @@ function renderSldTab(container, panel){
         <h3 class="font-bold text-sm text-[var(--navy)]">مخطط اللوحة أحادي الخط</h3>
         <button id="btn-print-sld" class="btn-navy rounded-lg px-3 py-1.5 text-xs">طباعة / حفظ PDF</button>
       </div>
-      <div class="overflow-x-auto rounded-lg" id="sld-holder">${svg}</div>
+      <div class="overflow-x-auto rounded-lg" id="sld-holder" dir="ltr">${svg}</div>
+      <p class="text-[10px] text-[var(--ink-soft)] mt-2">المخطط بيترسم من الشمال لليمين (زي أي رسمة كهربائية قياسية) - اتمرر يميناً/شمالاً لو محتاج تشوف أجزاء منه.</p>
     </div>
   `;
   document.getElementById('btn-print-sld').onclick = ()=>{
@@ -807,37 +912,95 @@ function renderSldTab(container, panel){
 }
 
 function buildSldSvg(panel, summary){
-  const n = Math.max(panel.loads.length, 1);
+  const childPanels = (State.currentProject?.panels || []).filter(p => p.parentPanelId === panel.id);
+
+  const loadItems = panel.loads.map((load, i) => ({
+    kind: 'load',
+    name: load.name,
+    kw: load.kw,
+    standby: load.standby,
+    isMotor: load.type === 'motor',
+    isLighting: load.type === 'lighting',
+    breaker: summary.results[i].r.breaker,
+    cableSize: summary.results[i].r.cableSize,
+    cableLength: load.cableLength,
+  }));
+
+  const panelItems = childPanels.map(cp => {
+    const cs = calcPanelSummary(cp);
+    return {
+      kind: 'panel',
+      name: cp.name,
+      kw: cs.totalConnectedKW,
+      breaker: cs.incomerBreaker,
+      cableSize: cs.incomerCableSize,
+      cableLength: cp.incomerCableLength,
+    };
+  });
+
+  const items = [...loadItems, ...panelItems];
+  const n = Math.max(items.length, 1);
   const feederSpacing = 190;
-  const width = Math.max(900, 140 + n*feederSpacing);
   const height = 480;
-  const busY = 150;
+  const busY = 190;
   const startX = 120;
+  const srcX = startX - 40;
+  const width = Math.max(900, startX + n*feederSpacing + 210);
 
   let feeders = '';
-  panel.loads.forEach((load, i)=>{
-    const r = summary.results[i].r;
+  items.forEach((item, i)=>{
     const x = startX + i*feederSpacing;
-    const symbol = load.type==='motor'
-      ? `<circle cx="${x}" cy="380" r="20" fill="white" stroke="#0B2545" stroke-width="2"/><text x="${x}" y="386" text-anchor="middle" font-size="16" font-weight="700" fill="#0B2545">M</text>`
-      : `<rect x="${x-20}" y="360" width="40" height="40" fill="white" stroke="#0B2545" stroke-width="2"/><text x="${x}" y="384" text-anchor="middle" font-size="11" fill="#0B2545">${load.type==='lighting'?'إنارة':'حمل'}</text>`;
+    let symbol;
+    if(item.kind === 'panel'){
+      symbol = `
+        <rect x="${x-24}" y="356" width="48" height="44" fill="white" stroke="#0B2545" stroke-width="2"/>
+        <line x1="${x-24}" y1="366" x2="${x+24}" y2="366" stroke="#0B2545" stroke-width="2"/>
+        <line x1="${x-14}" y1="376" x2="${x+14}" y2="376" stroke="#0B2545" stroke-width="1.2"/>
+        <line x1="${x-14}" y1="384" x2="${x+14}" y2="384" stroke="#0B2545" stroke-width="1.2"/>
+        <line x1="${x-14}" y1="392" x2="${x+14}" y2="392" stroke="#0B2545" stroke-width="1.2"/>
+      `;
+    } else if(item.isMotor){
+      symbol = `<circle cx="${x}" cy="380" r="20" fill="white" stroke="#0B2545" stroke-width="2"/><text x="${x}" y="386" text-anchor="middle" font-size="16" font-weight="700" fill="#0B2545">M</text>`;
+    } else {
+      symbol = `<rect x="${x-20}" y="360" width="40" height="40" fill="white" stroke="#0B2545" stroke-width="2"/><text x="${x}" y="384" text-anchor="middle" font-size="11" fill="#0B2545">${item.isLighting?'إنارة':'حمل'}</text>`;
+    }
 
     feeders += `
       <line x1="${x}" y1="${busY}" x2="${x}" y2="240" stroke="#0B2545" stroke-width="2"/>
       <rect x="${x-14}" y="240" width="28" height="34" fill="#F7F5EF" stroke="#0B2545" stroke-width="2"/>
       <line x1="${x-10}" y1="270" x2="${x+10}" y2="244" stroke="#0B2545" stroke-width="2"/>
-      <line x1="${x}" y1="274" x2="${x}" y2="360" stroke="#0B2545" stroke-width="2"/>
+      <line x1="${x}" y1="274" x2="${x}" y2="356" stroke="#0B2545" stroke-width="2"/>
       ${symbol}
-      <text x="${x}" y="300" text-anchor="middle" font-size="10" fill="#4A5A75" font-family="Roboto Mono, monospace">${r.breaker}A</text>
-      <text x="${x}" y="315" text-anchor="middle" font-size="10" fill="#4A5A75" font-family="Roboto Mono, monospace">${r.cableSize}mm² / ${load.cableLength}m</text>
-      <text x="${x}" y="430" text-anchor="middle" font-size="11" font-weight="700" fill="#16233B">${escapeHtml(load.name)}</text>
-      <text x="${x}" y="445" text-anchor="middle" font-size="10" fill="#4A5A75" font-family="Roboto Mono, monospace">${load.kw} kW</text>
-      ${load.standby? `<text x="${x}" y="459" text-anchor="middle" font-size="9" fill="#C17817">احتياطي</text>`:''}
+      <text x="${x}" y="300" text-anchor="middle" font-size="10" fill="#4A5A75" font-family="Roboto Mono, monospace">${item.breaker}A</text>
+      <text x="${x}" y="315" text-anchor="middle" font-size="10" fill="#4A5A75" font-family="Roboto Mono, monospace">${item.cableSize}mm² / ${item.cableLength}m</text>
+      <text x="${x}" y="415" text-anchor="middle" font-size="11" font-weight="700" fill="#16233B">${item.kind==='panel'?'↳ ':''}${escapeHtml(item.name)}</text>
+      <text x="${x}" y="430" text-anchor="middle" font-size="10" fill="#4A5A75" font-family="Roboto Mono, monospace">${item.kind==='panel' ? 'لوحة فرعية · '+item.kw+' kW' : item.kw+' kW'}</text>
+      ${item.standby? `<text x="${x}" y="444" text-anchor="middle" font-size="9" fill="#C17817">احتياطي</text>`:''}
     `;
   });
 
-  const busEndX = startX + (n-1)*feederSpacing + (panel.loads.length? 0 : 0);
-  const busLineEnd = Math.max(startX + 40, startX + (n-1)*feederSpacing + 40);
+  const busLineEnd = Math.max(srcX + 40, startX + (items.length-1)*feederSpacing + 40);
+
+  // Source section: transformer/utility (main panel) OR incoming feed from a parent panel (sub-panel)
+  let sourceBlock;
+  if(panel.sourceType === 'sub'){
+    const parentPanel = (State.currentProject?.panels || []).find(p => p.id === panel.parentPanelId);
+    const parentLabel = parentPanel ? parentPanel.name : 'لوحة أم غير محددة';
+    sourceBlock = `
+      <text x="${srcX}" y="14" text-anchor="middle" font-size="12" font-weight="700" fill="#0B2545">من: ${escapeHtml(parentLabel)}</text>
+      <line x1="${srcX}" y1="24" x2="${srcX}" y2="116" stroke="#0B2545" stroke-width="2"/>
+      <polygon points="${srcX},120 ${srcX-8},106 ${srcX+8},106" fill="#0B2545"/>
+    `;
+  } else {
+    sourceBlock = `
+      <text x="${srcX}" y="14" text-anchor="middle" font-size="12" font-weight="700" fill="#0B2545">المصدر: محول ${panel.transformerKVA} kVA</text>
+      <line x1="${srcX}" y1="24" x2="${srcX}" y2="46" stroke="#0B2545" stroke-width="2"/>
+      <polygon points="${srcX},50 ${srcX-9},34 ${srcX+9},34" fill="none" stroke="#0B2545" stroke-width="2"/>
+      <circle cx="${srcX}" cy="62" r="11" fill="none" stroke="#0B2545" stroke-width="2"/>
+      <circle cx="${srcX}" cy="80" r="11" fill="none" stroke="#0B2545" stroke-width="2"/>
+      <line x1="${srcX}" y1="91" x2="${srcX}" y2="120" stroke="#0B2545" stroke-width="2"/>
+    `;
+  }
 
   return `
   <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" style="background:#FBFAF6;">
@@ -850,21 +1013,18 @@ function buildSldSvg(panel, summary){
     <rect x="4" y="4" width="${width-8}" height="${height-8}" fill="none" stroke="#0B2545" stroke-width="2"/>
 
     <!-- Source -->
-    <text x="${startX-70}" y="40" font-size="12" font-weight="700" fill="#0B2545">المصدر: محول ${panel.transformerKVA} kVA</text>
-    <line x1="${startX-40}" y1="50" x2="${startX-40}" y2="90" stroke="#0B2545" stroke-width="2"/>
-    <polygon points="${startX-40},90 ${startX-52},70 ${startX-28},70" fill="none" stroke="#0B2545" stroke-width="2"/>
-    <circle cx="${startX-40}" cy="105" r="16" fill="none" stroke="#0B2545" stroke-width="2"/>
-    <circle cx="${startX-40}" cy="122" r="16" fill="none" stroke="#0B2545" stroke-width="2"/>
-    <line x1="${startX-40}" y1="138" x2="${startX-40}" y2="${busY}" stroke="#0B2545" stroke-width="2"/>
+    ${sourceBlock}
 
     <!-- Incomer breaker -->
-    <rect x="${startX-54}" y="${busY-40}" width="28" height="34" fill="#F7F5EF" stroke="#0B2545" stroke-width="2" transform="translate(0,0)"/>
-    <text x="${startX-90}" y="${busY-45}" font-size="10" fill="#4A5A75" font-family="Roboto Mono, monospace">القاطع الرئيسي ${summary.incomerBreaker}A</text>
-    <text x="${startX-90}" y="${busY-32}" font-size="10" fill="#4A5A75" font-family="Roboto Mono, monospace">${summary.incomerCableSize}mm² / ${panel.incomerCableLength}m</text>
+    <rect x="${srcX-14}" y="120" width="28" height="34" fill="#F7F5EF" stroke="#0B2545" stroke-width="2"/>
+    <line x1="${srcX-10}" y1="150" x2="${srcX+10}" y2="124" stroke="#0B2545" stroke-width="2"/>
+    <line x1="${srcX}" y1="154" x2="${srcX}" y2="${busY}" stroke="#0B2545" stroke-width="2"/>
+    <text x="${srcX}" y="169" text-anchor="middle" font-size="9" fill="#4A5A75" font-family="Roboto Mono, monospace">القاطع الرئيسي ${summary.incomerBreaker}A</text>
+    <text x="${srcX}" y="181" text-anchor="middle" font-size="9" fill="#4A5A75" font-family="Roboto Mono, monospace">${summary.incomerCableSize}mm² / ${panel.incomerCableLength}m</text>
 
     <!-- Bus bar -->
-    <line x1="${startX-40}" y1="${busY}" x2="${busLineEnd}" y2="${busY}" stroke="#0B2545" stroke-width="4"/>
-    <text x="${startX-40}" y="${busY-6}" font-size="11" font-weight="700" fill="#0B2545">${escapeHtml(panel.name)} — ${panel.voltage}V</text>
+    <line x1="${srcX}" y1="${busY}" x2="${busLineEnd}" y2="${busY}" stroke="#0B2545" stroke-width="4"/>
+    <text x="${srcX}" y="${busY-8}" font-size="11" font-weight="700" fill="#0B2545" text-anchor="middle">${escapeHtml(panel.name)} — ${panel.voltage}V</text>
 
     ${feeders}
 

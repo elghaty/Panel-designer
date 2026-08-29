@@ -1092,7 +1092,7 @@ function renderProjectOverview(main){
 
 function buildProjectTreeSvg(project){
   const FEEDER_SPACING = 190;
-  const LEVEL_HEIGHT = 300; // vertical space consumed by one panel's transformer/bus/feeders before the next level
+  const LEVEL_HEIGHT = 340; // vertical space consumed by one panel's transformer/bus/feeders before the next level
   const panels = project.panels || [];
   const byId = Object.fromEntries(panels.map(p=>[p.id,p]));
   const childrenOf = pid => panels.filter(p => p.parentPanelId === pid);
@@ -1125,12 +1125,15 @@ function buildProjectTreeSvg(project){
   function drawNode(node, xStart, width, topY, isRoot){
     const {panel, summary, children} = node;
     const busX = xStart + width/2;
-    const busY = topY + (isRoot ? 190 : 60);
+    const parentPanelForLink = !isRoot ? byId[panel.parentPanelId] : null;
+    const isXfmrLink = !isRoot && parentPanelForLink && isTransformerLink(parentPanelForLink.voltage, panel.voltage);
+    const busY = topY + (isRoot ? 190 : (isXfmrLink ? 130 : 60));
 
     // Source block
     if(isRoot){
       svgBody += `
         <text x="${busX-70}" y="${topY-6}" font-size="12" font-weight="700" fill="#0B2545" text-anchor="middle">المصدر: محول ${panel.transformerKVA} kVA</text>
+        ${svgLightningArrester(busX+8, topY-2)}
         <line x1="${busX}" y1="${topY+10}" x2="${busX}" y2="${topY+40}" stroke="#0B2545" stroke-width="2"/>
         <polygon points="${busX},${topY+40} ${busX-12},${topY+20} ${busX+12},${topY+20}" fill="none" stroke="#0B2545" stroke-width="2"/>
         <circle cx="${busX}" cy="${topY+56}" r="14" fill="none" stroke="#0B2545" stroke-width="2"/>
@@ -1138,16 +1141,28 @@ function buildProjectTreeSvg(project){
         <line x1="${busX}" y1="${topY+86}" x2="${busX}" y2="${topY+120}" stroke="#0B2545" stroke-width="2"/>
         <rect x="${busX-14}" y="${topY+120}" width="28" height="34" fill="#F7F5EF" stroke="#0B2545" stroke-width="2"/>
         <line x1="${busX-10}" y1="${topY+150}" x2="${busX+10}" y2="${topY+124}" stroke="#0B2545" stroke-width="2"/>
+        ${svgCT(busX-28, topY+137)}
+        ${svgRelayTag(busX+14, topY+137, '50/51')}
         <line x1="${busX}" y1="${topY+154}" x2="${busX}" y2="${busY}" stroke="#0B2545" stroke-width="2"/>
-        <text x="${busX+18}" y="${topY+136}" font-size="9" fill="#4A5A75" text-anchor="start" font-family="monospace">${summary.incomerBreaker}A</text>
+        <text x="${busX+40}" y="${topY+150}" font-size="9" fill="#4A5A75" text-anchor="start" font-family="monospace">${summary.incomerBreaker}A</text>
       `;
     } else {
+      const parentPanel = parentPanelForLink;
+      const isXfmr = isXfmrLink;
       svgBody += `
-        <text x="${busX}" y="${topY-8}" font-size="10" fill="#4A5A75" text-anchor="middle">من: ${escapeHtml((byId[panel.parentPanelId]||{}).name||'')}</text>
+        <text x="${busX}" y="${topY-8}" font-size="10" fill="#4A5A75" text-anchor="middle">من: ${escapeHtml((parentPanel||{}).name||'')}</text>
         <line x1="${busX}" y1="${topY}" x2="${busX}" y2="${topY+16}" stroke="#0B2545" stroke-width="2"/>
         <rect x="${busX-12}" y="${topY+16}" width="24" height="28" fill="#F7F5EF" stroke="#0B2545" stroke-width="2"/>
         <line x1="${busX-8}" y1="${topY+40}" x2="${busX+8}" y2="${topY+18}" stroke="#0B2545" stroke-width="2"/>
-        <line x1="${busX}" y1="${topY+44}" x2="${busX}" y2="${busY}" stroke="#0B2545" stroke-width="2"/>
+        ${isXfmr ? svgCT(busX-24, topY+30) : ''}
+        ${isXfmr ? svgRelayTag(busX+12, topY+30, '87T') : ''}
+        <line x1="${busX}" y1="${topY+44}" x2="${busX}" y2="${isXfmr?topY+70:busY}" stroke="#0B2545" stroke-width="2"/>
+        ${isXfmr ? `
+          <circle cx="${busX}" cy="${topY+82}" r="12" fill="none" stroke="#0B2545" stroke-width="2"/>
+          <circle cx="${busX}" cy="${topY+100}" r="12" fill="none" stroke="#0B2545" stroke-width="2"/>
+          <text x="${busX+20}" y="${topY+94}" font-size="8" fill="#4A5A75" text-anchor="start" font-family="monospace">${parentPanel.voltage}/${panel.voltage}V</text>
+          <line x1="${busX}" y1="${topY+112}" x2="${busX}" y2="${busY}" stroke="#0B2545" stroke-width="2"/>
+        ` : ''}
       `;
     }
 
@@ -1171,6 +1186,7 @@ function buildProjectTreeSvg(project){
         <line x1="${x}" y1="${busY}" x2="${x}" y2="${busY+30}" stroke="#0B2545" stroke-width="2"/>
         <rect x="${x-12}" y="${busY+30}" width="24" height="28" fill="#F7F5EF" stroke="#0B2545" stroke-width="2"/>
         <line x1="${x-8}" y1="${busY+54}" x2="${x+8}" y2="${busY+32}" stroke="#0B2545" stroke-width="2"/>
+        ${load.type==='motor' ? svgRelayTag(x+10, busY+42, '49/51', 18) : ''}
         <line x1="${x}" y1="${busY+58}" x2="${x}" y2="${busY+102}" stroke="#0B2545" stroke-width="2"/>
         ${symbol}
         <text x="${x}" y="${busY+76}" text-anchor="middle" font-size="9" fill="#4A5A75" font-family="monospace">${r.breaker}A</text>
@@ -1212,6 +1228,51 @@ function buildProjectTreeSvg(project){
   </svg>`;
 }
 
+/* ---- Professional single-line symbol helpers (IEC/ANSI style) ---- */
+
+function svgRelayTag(x, y, num, dx){
+  dx = dx || 22;
+  const r = 10, cx = x + dx;
+  return `
+    <line x1="${x}" y1="${y}" x2="${cx-r}" y2="${y}" stroke="#0B2545" stroke-width="1" stroke-dasharray="2,2"/>
+    <circle cx="${cx}" cy="${y}" r="${r}" fill="white" stroke="#0B2545" stroke-width="1.3"/>
+    <text x="${cx}" y="${y+3}" text-anchor="middle" font-size="7.5" fill="#0B2545" font-family="monospace">${num}</text>
+  `;
+}
+function svgDisconnector(x, yTop, yBottom){
+  return `
+    <line x1="${x}" y1="${yTop}" x2="${x}" y2="${yTop+6}" stroke="#0B2545" stroke-width="2"/>
+    <circle cx="${x}" cy="${yTop+6}" r="2.3" fill="#0B2545"/>
+    <line x1="${x}" y1="${yTop+6}" x2="${x+10}" y2="${yBottom-6}" stroke="#0B2545" stroke-width="2"/>
+    <circle cx="${x}" cy="${yBottom-6}" r="2.3" fill="#0B2545"/>
+    <line x1="${x}" y1="${yBottom-6}" x2="${x}" y2="${yBottom}" stroke="#0B2545" stroke-width="2"/>
+  `;
+}
+function svgCT(x, y){
+  return `
+    <circle cx="${x}" cy="${y}" r="7" fill="none" stroke="#0B2545" stroke-width="1.3"/>
+    <text x="${x+13}" y="${y+3}" font-size="7.5" fill="#4A5A75" font-family="monospace">CT</text>
+  `;
+}
+function svgLightningArrester(x, y){
+  const ax = x+22;
+  return `
+    <line x1="${x}" y1="${y}" x2="${ax}" y2="${y}" stroke="#0B2545" stroke-width="1"/>
+    <line x1="${ax}" y1="${y}" x2="${ax}" y2="${y+12}" stroke="#0B2545" stroke-width="1.3"/>
+    <polygon points="${ax-5},${y+12} ${ax+5},${y+12} ${ax},${y+21}" fill="none" stroke="#0B2545" stroke-width="1.3"/>
+    <line x1="${ax}" y1="${y+21}" x2="${ax}" y2="${y+27}" stroke="#0B2545" stroke-width="1"/>
+    <line x1="${ax-6}" y1="${y+27}" x2="${ax+6}" y2="${y+27}" stroke="#0B2545" stroke-width="1.3"/>
+    <line x1="${ax-3.5}" y1="${y+30}" x2="${ax+3.5}" y2="${y+30}" stroke="#0B2545" stroke-width="1"/>
+    <text x="${ax+9}" y="${y+17}" font-size="7" fill="#4A5A75" font-family="monospace">L.A.</text>
+  `;
+}
+// Is this parent→child link an MV/LV (or similar step-down) transformer connection,
+// judged from the voltage ratio between the two panels, rather than a plain feeder?
+function isTransformerLink(parentVoltage, childVoltage){
+  if(!parentVoltage || !childVoltage) return false;
+  return parentVoltage / childVoltage >= 1.8;
+}
+
 function buildSldSvg(panel, summary){
   const childPanels = (State.currentProject?.panels || []).filter(p => p.parentPanelId === panel.id);
 
@@ -1236,6 +1297,7 @@ function buildSldSvg(panel, summary){
       breaker: cs.incomerBreaker,
       cableSize: cs.incomerCableSize,
       cableLength: cp.incomerCableLength,
+      childVoltage: cp.voltage,
     };
   });
 
@@ -1251,8 +1313,15 @@ function buildSldSvg(panel, summary){
   let feeders = '';
   items.forEach((item, i)=>{
     const x = startX + i*feederSpacing;
+    const isXfmrLink = item.kind === 'panel' && isTransformerLink(panel.voltage, item.childVoltage);
     let symbol;
-    if(item.kind === 'panel'){
+    if(isXfmrLink){
+      symbol = `
+        <circle cx="${x}" cy="368" r="13" fill="none" stroke="#0B2545" stroke-width="2"/>
+        <circle cx="${x}" cy="392" r="13" fill="none" stroke="#0B2545" stroke-width="2"/>
+        <text x="${x}" y="418" text-anchor="middle" font-size="8.5" fill="#4A5A75" font-family="monospace">${panel.voltage}/${item.childVoltage}V</text>
+      `;
+    } else if(item.kind === 'panel'){
       symbol = `
         <rect x="${x-24}" y="356" width="48" height="44" fill="white" stroke="#0B2545" stroke-width="2"/>
         <line x1="${x-24}" y1="366" x2="${x+24}" y2="366" stroke="#0B2545" stroke-width="2"/>
@@ -1270,6 +1339,9 @@ function buildSldSvg(panel, summary){
       <line x1="${x}" y1="${busY}" x2="${x}" y2="240" stroke="#0B2545" stroke-width="2"/>
       <rect x="${x-14}" y="240" width="28" height="34" fill="#F7F5EF" stroke="#0B2545" stroke-width="2"/>
       <line x1="${x-10}" y1="270" x2="${x+10}" y2="244" stroke="#0B2545" stroke-width="2"/>
+      ${item.isMotor ? svgRelayTag(x+14, 257, '49/51') : ''}
+      ${isXfmrLink ? svgCT(x-28, 300) : ''}
+      ${isXfmrLink ? svgRelayTag(x+14, 300, '87T') : ''}
       <line x1="${x}" y1="274" x2="${x}" y2="356" stroke="#0B2545" stroke-width="2"/>
       ${symbol}
       <text x="${x}" y="300" text-anchor="middle" font-size="10" fill="#4A5A75" font-family="Roboto Mono, monospace">${item.breaker}A</text>
@@ -1295,11 +1367,13 @@ function buildSldSvg(panel, summary){
   } else {
     sourceBlock = `
       <text x="${srcX}" y="14" text-anchor="middle" font-size="12" font-weight="700" fill="#0B2545">المصدر: محول ${panel.transformerKVA} kVA</text>
+      ${svgLightningArrester(srcX+6, 20)}
       <line x1="${srcX}" y1="24" x2="${srcX}" y2="46" stroke="#0B2545" stroke-width="2"/>
       <polygon points="${srcX},50 ${srcX-9},34 ${srcX+9},34" fill="none" stroke="#0B2545" stroke-width="2"/>
       <circle cx="${srcX}" cy="62" r="11" fill="none" stroke="#0B2545" stroke-width="2"/>
       <circle cx="${srcX}" cy="80" r="11" fill="none" stroke="#0B2545" stroke-width="2"/>
       <line x1="${srcX}" y1="91" x2="${srcX}" y2="120" stroke="#0B2545" stroke-width="2"/>
+      ${svgDisconnector(srcX, 91, 118)}
     `;
   }
 
@@ -1319,6 +1393,8 @@ function buildSldSvg(panel, summary){
     <!-- Incomer breaker -->
     <rect x="${srcX-14}" y="120" width="28" height="34" fill="#F7F5EF" stroke="#0B2545" stroke-width="2"/>
     <line x1="${srcX-10}" y1="150" x2="${srcX+10}" y2="124" stroke="#0B2545" stroke-width="2"/>
+    ${svgCT(srcX-28, 137)}
+    ${svgRelayTag(srcX+14, 137, '50/51')}
     <line x1="${srcX}" y1="154" x2="${srcX}" y2="${busY}" stroke="#0B2545" stroke-width="2"/>
     <text x="${srcX}" y="169" text-anchor="middle" font-size="9" fill="#4A5A75" font-family="Roboto Mono, monospace">القاطع الرئيسي ${summary.incomerBreaker}A</text>
     <text x="${srcX}" y="181" text-anchor="middle" font-size="9" fill="#4A5A75" font-family="Roboto Mono, monospace">${summary.incomerCableSize}mm² / ${panel.incomerCableLength}m</text>

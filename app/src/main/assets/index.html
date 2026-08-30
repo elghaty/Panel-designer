@@ -364,10 +364,14 @@ function defaultLoad(name){
 function calcFLC(load){
   const P = load.kw*1000;
   const V = load.phases===3 ? 400 : 230; // assume std voltages; refined by panel voltage below if needed
+  // Efficiency only makes physical sense for motors (mechanical output -> electrical input).
+  // Applying it to lighting/general loads artificially inflates the design current and
+  // oversizes the breaker, so it's ignored for those types.
+  const eff = load.type==='motor' ? (load.eff||1) : 1;
   if(load.phases===3){
-    return P/(Math.sqrt(3)*V*load.pf*load.eff);
+    return P/(Math.sqrt(3)*V*load.pf*eff);
   }else{
-    return P/(V*load.pf*load.eff);
+    return P/(V*load.pf*eff);
   }
 }
 
@@ -497,6 +501,25 @@ function calcPanelSummary(panel, visited){
 }
 
 function round1(n){ return Math.round(n*10)/10; }
+
+// Standard transformer ratings (kVA), IEC/local-market common sizes.
+const STD_TRANSFORMER_KVA = [25,50,75,100,160,200,250,315,400,500,630,800,1000,1250,1600,2000,2500,3150];
+
+// Suggests a transformer size from the panel's OWN calculated demand (loads + fed sub-panels),
+// with a spare-capacity margin for future loads — rather than leaving kVA as a disconnected
+// manual field that never reflects what's actually connected.
+function suggestTransformerKVA(panel, marginFactor){
+  marginFactor = marginFactor || 1.25; // ~25% spare capacity for future loads/growth
+  const summary = calcPanelSummary(panel);
+  const assumedPF = 0.85;
+  const requiredKVA = (summary.totalConnectedKW * (panel.diversityFactor||1) / assumedPF) * marginFactor;
+  const std = STD_TRANSFORMER_KVA.find(k => k >= requiredKVA);
+  return {
+    totalConnectedKW: summary.totalConnectedKW,
+    requiredKVA: round1(requiredKVA),
+    suggestedKVA: std || STD_TRANSFORMER_KVA[STD_TRANSFORMER_KVA.length-1],
+  };
+}
 
 /* ============================== RENDER: PROJECTS LIST ============================== */
 
@@ -748,7 +771,14 @@ function renderLoadsTab(container, panel){
           <div class="field"><label>عدد الدوائر المتجاورة</label><input id="f-group" type="number" min="1" max="8" value="${panel.groupingCircuits}"></div>
           <div class="field"><label>عامل التنويع للقاطع الرئيسي</label><input id="f-diversity" type="number" step="0.05" value="${panel.diversityFactor}"></div>
           <div class="field"><label>طول كابل التغذية الرئيسي (م)</label><input id="f-incomerlen" type="number" value="${panel.incomerCableLength}"></div>
-          <div class="field" id="f-kva-field"><label>سعة المحول (kVA)</label><input id="f-kva" type="number" value="${panel.transformerKVA}"></div>
+          <div class="field" id="f-kva-field">
+            <label>سعة المحول (kVA)</label>
+            <div style="display:flex;gap:6px;">
+              <input id="f-kva" type="number" value="${panel.transformerKVA}" style="flex:1">
+              <button id="btn-suggest-kva" type="button" title="اقترح سعة المحول تلقائياً حسب الأحمال المتصلة" style="white-space:nowrap;padding:0 8px;border-radius:6px;border:1px solid var(--copper);color:var(--copper-dark);font-size:.72rem;font-weight:700;background:white;">⚡ اقتراح تلقائي</button>
+            </div>
+            <p id="kva-hint" class="text-[10px] mt-1"></p>
+          </div>
           <div class="field" id="f-z-field"><label>%Z للمحول</label><input id="f-z" type="number" step="0.1" value="${panel.transformerZ}"></div>
           <div class="field"><label>أو Isc مباشرة (kA)</label><input id="f-iscoverride" type="number" step="0.1" value="${panel.upstreamIscOverrideKA ?? ''}" placeholder="اختياري"></div>
         </div>
@@ -769,6 +799,29 @@ function renderLoadsTab(container, panel){
 
   document.getElementById('f-sourcetype').onchange = (e)=>{
     document.getElementById('parent-panel-field').style.display = e.target.value==='sub' ? 'block' : 'none';
+  };
+
+  function updateKvaHint(){
+    const hintEl = document.getElementById('kva-hint');
+    const kvaInput = document.getElementById('f-kva');
+    if(!hintEl || !kvaInput) return;
+    const sugg = suggestTransformerKVA(panel);
+    const current = num(kvaInput.value, panel.transformerKVA);
+    let msg = `الحمل الكلي المتصل: ${sugg.totalConnectedKW} kW → السعة المقترحة: ${sugg.suggestedKVA} kVA (بهامش احتياطي)`;
+    if(current > sugg.suggestedKVA*1.8 || current < sugg.requiredKVA){
+      hintEl.style.color = 'var(--warn)';
+      msg += ' — ⚠ السعة المدخلة بعيدة عن المطلوب فعلياً، راجعها';
+    } else {
+      hintEl.style.color = 'var(--ink-soft)';
+    }
+    hintEl.textContent = msg;
+  }
+  updateKvaHint();
+  document.getElementById('f-kva').addEventListener('input', updateKvaHint);
+  document.getElementById('btn-suggest-kva').onclick = ()=>{
+    const sugg = suggestTransformerKVA(panel);
+    document.getElementById('f-kva').value = sugg.suggestedKVA;
+    updateKvaHint();
   };
 
   document.getElementById('btn-toggle-advanced').onclick = ()=>{
@@ -812,6 +865,13 @@ function renderLoadsTab(container, panel){
 
 const LOAD_TYPE_LABEL = {motor:'محرك / مضخة', general:'حمل عام', lighting:'إنارة'};
 const LOAD_TYPE_ICON = {motor:'⚙', general:'🔌', lighting:'💡'};
+// Sensible starting PF/efficiency per load type. Efficiency is only meaningful for motors
+// (see calcFLC) — kept here at 1 for other types just so the field always has a sane value.
+const LOAD_TYPE_DEFAULTS = {
+  motor:    {pf:0.85, eff:0.90},
+  general:  {pf:0.90, eff:1},
+  lighting: {pf:0.95, eff:1},
+};
 
 function renderLoadsCards(panel){
   const holder = document.getElementById('loads-cards');
@@ -845,10 +905,10 @@ function renderLoadsCards(panel){
           </select>
         </div>
         <div class="field"><label>PF</label><input type="number" step="0.01" data-f="pf" value="${load.pf}"></div>
-        <div class="field"><label>الكفاءة</label><input type="number" step="0.01" data-f="eff" value="${load.eff}"></div>
+        <div class="field" data-only-motor style="display:${load.type==='motor'?'block':'none'}"><label>الكفاءة (محركات فقط)</label><input type="number" step="0.01" data-f="eff" value="${load.eff}"></div>
         <div class="field"><label>عامل الطلب</label><input type="number" step="0.05" data-f="demandFactor" value="${load.demandFactor}"></div>
         <div class="field"><label>طول الكابل (م)</label><input type="number" data-f="cableLength" value="${load.cableLength}"></div>
-        <div class="field"><label>طريقة التشغيل</label>
+        <div class="field" data-only-motor style="display:${load.type==='motor'?'block':'none'}"><label>طريقة التشغيل (محركات فقط)</label>
           <select data-f="startMethod">
             <option value="DOL" ${load.startMethod==='DOL'?'selected':''}>مباشر</option>
             <option value="SD" ${load.startMethod==='SD'?'selected':''}>نجمة-مثلث</option>
@@ -874,6 +934,16 @@ function renderLoadsCards(panel){
         else if(['kw','pf','eff','qty','demandFactor','cableLength'].includes(field)) load[field]=num(inp.value, load[field]);
         else if(field==='phases') load[field]=num(inp.value, load[field]);
         else load[field]=inp.value;
+        if(field==='type'){
+          // Switching type resets PF/efficiency to sane defaults for that load category —
+          // otherwise a lighting/general load silently keeps motor-style efficiency, which
+          // inflates its design current and oversizes the breaker.
+          const d = LOAD_TYPE_DEFAULTS[load.type] || LOAD_TYPE_DEFAULTS.general;
+          load.pf = d.pf; load.eff = d.eff;
+          await saveProject(State.currentProject);
+          renderLoadsCards(panel);
+          return;
+        }
         await saveProject(State.currentProject);
       });
     });
@@ -1144,7 +1214,7 @@ function buildProjectTreeSvg(project){
         ${svgCT(busX-28, topY+137)}
         ${svgRelayTag(busX+14, topY+137, '50/51')}
         <line x1="${busX}" y1="${topY+154}" x2="${busX}" y2="${busY}" stroke="#0B2545" stroke-width="2"/>
-        <text x="${busX+40}" y="${topY+150}" font-size="9" fill="#4A5A75" text-anchor="start" font-family="monospace">${summary.incomerBreaker}A</text>
+        <text x="${busX+58}" y="${topY+140}" font-size="9" fill="#4A5A75" text-anchor="start" font-family="monospace" class="ann">${summary.incomerBreaker}A</text>
       `;
     } else {
       const parentPanel = parentPanelForLink;
@@ -1189,9 +1259,9 @@ function buildProjectTreeSvg(project){
         ${load.type==='motor' ? svgRelayTag(x+10, busY+42, '49/51', 18) : ''}
         <line x1="${x}" y1="${busY+58}" x2="${x}" y2="${busY+102}" stroke="#0B2545" stroke-width="2"/>
         ${symbol}
-        <text x="${x}" y="${busY+76}" text-anchor="middle" font-size="9" fill="#4A5A75" font-family="monospace">${r.breaker}A</text>
-        <text x="${x}" y="${busY+156}" text-anchor="middle" font-size="10" font-weight="700" fill="#16233B">${escapeHtml(load.name)}</text>
-        <text x="${x}" y="${busY+169}" text-anchor="middle" font-size="9" fill="#4A5A75" font-family="monospace">${load.kw} kW</text>
+        <text x="${x}" y="${busY+76}" text-anchor="middle" font-size="9" fill="#4A5A75" font-family="monospace" class="ann">${r.breaker}A</text>
+        <text x="${x}" y="${busY+156}" text-anchor="middle" font-size="10" font-weight="700" fill="#16233B" class="ann">${escapeHtml(load.name)}</text>
+        <text x="${x}" y="${busY+169}" text-anchor="middle" font-size="9" fill="#4A5A75" font-family="monospace" class="ann">${load.kw} kW</text>
       `;
       slotX += FEEDER_SPACING;
     });
@@ -1217,6 +1287,10 @@ function buildProjectTreeSvg(project){
         <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#E3EAF2" stroke-width="1"/>
       </pattern>
     </defs>
+    <style>
+      text{unicode-bidi:plaintext;}
+      .ann{paint-order:stroke; stroke:#FBFAF6; stroke-width:3px; stroke-linejoin:round;}
+    </style>
     <rect width="${totalWidth}" height="${totalHeight}" fill="url(#grid2)"/>
     <rect x="4" y="4" width="${totalWidth-8}" height="${totalHeight-8}" fill="none" stroke="#0B2545" stroke-width="2"/>
     ${svgBody}
@@ -1231,7 +1305,10 @@ function buildProjectTreeSvg(project){
 /* ---- Professional single-line symbol helpers (IEC/ANSI style) ---- */
 
 function svgRelayTag(x, y, num, dx){
-  dx = dx || 22;
+  // dx pushes the relay bubble clear of the breaker box it's tagging; 22 is the safe minimum
+  // for the box widths used in this file (24-28px) — smaller values were causing the bubble
+  // to visually collide with the box edge.
+  dx = Math.max(dx || 22, 22);
   const r = 10, cx = x + dx;
   return `
     <line x1="${x}" y1="${y}" x2="${cx-r}" y2="${y}" stroke="#0B2545" stroke-width="1" stroke-dasharray="2,2"/>
@@ -1249,9 +1326,11 @@ function svgDisconnector(x, yTop, yBottom){
   `;
 }
 function svgCT(x, y){
+  // Label sits BELOW the circle rather than to its right — putting it to the right placed it
+  // directly under/behind the adjacent breaker box in every diagram that used this symbol.
   return `
     <circle cx="${x}" cy="${y}" r="7" fill="none" stroke="#0B2545" stroke-width="1.3"/>
-    <text x="${x+13}" y="${y+3}" font-size="7.5" fill="#4A5A75" font-family="monospace">CT</text>
+    <text x="${x}" y="${y+19}" text-anchor="middle" font-size="7.5" fill="#4A5A75" font-family="monospace" class="ann">CT</text>
   `;
 }
 function svgLightningArrester(x, y){
@@ -1344,9 +1423,9 @@ function buildSldSvg(panel, summary){
       ${isXfmrLink ? svgRelayTag(x+14, 300, '87T') : ''}
       <line x1="${x}" y1="274" x2="${x}" y2="356" stroke="#0B2545" stroke-width="2"/>
       ${symbol}
-      <text x="${x}" y="300" text-anchor="middle" font-size="10" fill="#4A5A75" font-family="Roboto Mono, monospace">${item.breaker}A</text>
-      <text x="${x}" y="315" text-anchor="middle" font-size="10" fill="#4A5A75" font-family="Roboto Mono, monospace">${item.cableSize}mm² / ${item.cableLength}m</text>
-      <text x="${x}" y="415" text-anchor="middle" font-size="11" font-weight="700" fill="#16233B">${item.kind==='panel'?'↳ ':''}${escapeHtml(item.name)}</text>
+      <text x="${x}" y="300" text-anchor="middle" font-size="10" fill="#4A5A75" font-family="Roboto Mono, monospace" class="ann">${item.breaker}A</text>
+      <text x="${x}" y="315" text-anchor="middle" font-size="10" fill="#4A5A75" font-family="Roboto Mono, monospace" class="ann">${item.cableSize}mm² / ${item.cableLength}m</text>
+      <text x="${x}" y="415" text-anchor="middle" font-size="11" font-weight="700" fill="#16233B" class="ann">${item.kind==='panel'?'↳ ':''}${escapeHtml(item.name)}</text>
       <text x="${x}" y="430" text-anchor="middle" font-size="10" fill="#4A5A75" font-family="Roboto Mono, monospace">${item.kind==='panel' ? 'لوحة فرعية · '+item.kw+' kW' : item.kw+' kW'}</text>
       ${item.standby? `<text x="${x}" y="444" text-anchor="middle" font-size="9" fill="#C17817">احتياطي</text>`:''}
     `;
@@ -1384,6 +1463,14 @@ function buildSldSvg(panel, summary){
         <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#E3EAF2" stroke-width="1"/>
       </pattern>
     </defs>
+    <style>
+      /* The holder around this SVG is forced dir="ltr" so the diagram lays out left-to-right;
+         without this, mixed Arabic + unit text (e.g. "محول 630 kVA") renders with the words
+         scrambled/reversed. unicode-bidi:plaintext makes each text node pick its own direction
+         from its first strong character, independent of the container. */
+      text{unicode-bidi:plaintext;}
+      .ann{paint-order:stroke; stroke:#FBFAF6; stroke-width:3px; stroke-linejoin:round;}
+    </style>
     <rect width="${width}" height="${height}" fill="url(#grid)"/>
     <rect x="4" y="4" width="${width-8}" height="${height-8}" fill="none" stroke="#0B2545" stroke-width="2"/>
 

@@ -1,1 +1,2637 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مُصمِّم الشبكات الكهربائية</title>
+<link rel="stylesheet" href="mini-utils.css">
+<style>
+  :root{
+    --navy:#0B2545;
+    --navy-2:#123061;
+    --paper:#F7F5EF;
+    --grid:#D7E3EE;
+    --copper:#C17817;
+    --copper-dark:#9C5E10;
+    --ink:#16233B;
+    --ink-soft:#4A5A75;
+    --ok:#2D6A4F;
+    --warn:#B3261E;
+    --line:#CBD5CE;
+    --panel:#FFFFFF;
+    --panel-2:#F0F2F6;
+    --border:#E1E5EC;
+  }
+  *{font-family:'Segoe UI', Tahoma, Arial, sans-serif;}
+  .mono{font-family:'Consolas','Roboto Mono',monospace;}
+  body{background:var(--paper); color:var(--ink);}
+  ::-webkit-scrollbar{width:8px;height:8px;}
+  .blueprint-bg{
+    background-color:#0B2545;
+    background-image:
+      linear-gradient(rgba(255,255,255,.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.08) 1px, transparent 1px);
+    background-size: 22px 22px;
+  }
+  .paper-grid{
+    background-color:#FBFAF6;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+  .scrollbar-thin::-webkit-scrollbar{width:8px;height:8px;}
+  .scrollbar-thin::-webkit-scrollbar-thumb{background:#B9C6D9;border-radius:4px;}
+  .tab-btn{border-bottom:3px solid transparent;}
+  .tab-btn.active{border-bottom-color:var(--copper); color:var(--copper-dark); font-weight:700;}
+  input[type=text].badinput, input[type=number].badinput, select.badinput{border-color:var(--warn) !important; background:#FDEEEC;}
+  table.data-table th{background:var(--navy); color:#EAF0FA; font-weight:600; font-size:.78rem;}
+  table.data-table td, table.data-table th{padding:6px 8px; border:1px solid var(--border);}
+  table.data-table tr:nth-child(even){background:#F2F4F8;}
+  .chip{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:.72rem;font-weight:600;}
+  .chip-ok{background:rgba(52,199,119,.14);color:var(--ok);}
+  .chip-warn{background:rgba(255,107,107,.14);color:var(--warn);}
+  .field label{font-size:.72rem;color:var(--ink-soft);display:block;margin-bottom:2px;}
+  .field input, .field select{width:100%;border:1px solid #D3D9E4;border-radius:6px;padding:6px 8px;font-size:.85rem;background:white;color:var(--ink);}
+  .field input:focus, .field select:focus{outline:2px solid var(--copper);border-color:var(--copper);}
+  .field select option{background:var(--panel-2); color:var(--ink);}
+  /* Application menu bar (File / View / Help) */
+  .app-menu{position:relative;}
+  .app-menu-btn{padding:6px 12px;border-radius:6px;font-size:.85rem;color:var(--ink);background:transparent;border:none;cursor:pointer;}
+  .app-menu-btn:hover, .app-menu-btn.active{background:var(--panel-2); color:var(--copper-dark);}
+  .app-menu-list{display:none;position:absolute;top:calc(100% + 2px);right:0;min-width:230px;background:#FFFFFF;border:1px solid #D3D9E4;border-radius:8px;box-shadow:0 10px 28px rgba(11,37,69,.22);z-index:600;padding:4px;}
+  .app-menu-list.open{display:block;}
+  .app-menu-item{display:block;width:100%;text-align:right;padding:8px 10px;font-size:.82rem;color:var(--ink);background:none;border:none;border-radius:6px;cursor:pointer;}
+  .app-menu-item:hover{background:var(--panel-2);}
+  .app-menu-danger{color:var(--warn);}
+  .app-menu-sep{height:1px;background:var(--border);margin:4px 2px;}
+  /* Custom dropdown — replaces native <select> popups. Some Android WebView builds render
+     the native option list as an in-page overlay that blends/bleeds with page content behind
+     it instead of a clean opaque popup; building our own removes that failure mode entirely
+     and gives consistent, professional-looking dropdowns everywhere. */
+  .csel-wrap{position:relative;}
+  .csel-btn{width:100%;border:1px solid #D3D9E4;border-radius:6px;padding:6px 8px;font-size:.85rem;background:white;color:var(--ink);display:flex;align-items:center;justify-content:space-between;cursor:pointer;text-align:right;gap:6px;}
+  .csel-btn:focus{outline:2px solid var(--copper);border-color:var(--copper);}
+  .csel-arrow{color:var(--ink-soft);font-size:.9rem;flex-shrink:0;}
+  .csel-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .csel-list{position:absolute;top:calc(100% + 4px);right:0;left:0;background:#FFFFFF;border:1px solid #D3D9E4;border-radius:8px;box-shadow:0 10px 28px rgba(11,37,69,.22);z-index:500;max-height:240px;overflow-y:auto;}
+  .csel-item{padding:8px 10px;font-size:.85rem;color:var(--ink);cursor:pointer;background:#FFFFFF;}
+  .csel-item:hover{background:var(--panel-2);}
+  .csel-item.active{background:rgba(193,120,23,.12);color:var(--copper-dark);font-weight:700;}
+  .csel-group{padding:6px 10px;font-size:.68rem;font-weight:700;color:var(--ink-soft);background:var(--panel-2);}
+  .btn-copper{background:var(--copper);color:white;font-weight:700;}
+  .btn-copper:hover{background:var(--copper-dark);}
+  .btn-navy{background:var(--navy);color:white;font-weight:700;}
+  .btn-navy:hover{background:var(--navy-2);}
+  ::selection{background:#F1C889;}
+  input[type=checkbox]{accent-color:var(--copper);}
+</style>
+</head>
+<body class="min-h-screen">
 
+<div id="app" class="min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="blueprint-bg text-white px-5 py-3 flex items-center justify-between shadow-md z-20">
+    <div class="flex items-center gap-3">
+      <div class="w-12 h-12 rounded-lg border-2 border-[var(--copper)] flex items-center justify-center mono font-bold text-[var(--copper)] text-xl">SLD</div>
+      <div>
+        <h1 class="text-lg font-extrabold leading-tight">مُصمِّم الشبكات الكهربائية</h1>
+        <p class="text-[11px] text-[var(--ink-soft)] mono">حسابات أحمال · كابلات · قواطع · مخطط اللوحة أحادي الخط</p>
+      </div>
+    </div>
+    <div class="text-[11px] text-[var(--ink-soft)] mono hidden sm:block" id="save-indicator">جاهز</div>
+  </header>
+
+  <nav class="flex items-center gap-1 px-3 py-1.5 border-b border-[var(--border)] bg-[var(--panel)] text-sm relative z-10">
+    <div class="app-menu">
+      <button class="app-menu-btn" data-menu="file">📁 ملف</button>
+      <div class="app-menu-list" data-menu-list="file">
+        <button class="app-menu-item" id="menu-new-project">+ مشروع جديد</button>
+        <button class="app-menu-item" id="menu-export-project">⬇ تصدير المشروع الحالي (JSON)</button>
+        <button class="app-menu-item" id="menu-import-project">⬆ استيراد مشروع (JSON)</button>
+        <input type="file" id="menu-import-file" accept="application/json" style="display:none">
+        <div class="app-menu-sep"></div>
+        <button class="app-menu-item app-menu-danger" id="menu-delete-project">🗑 حذف المشروع الحالي</button>
+      </div>
+    </div>
+    <div class="app-menu">
+      <button class="app-menu-btn" data-menu="view">👁 عرض</button>
+      <div class="app-menu-list" data-menu-list="view">
+        <button class="app-menu-item" data-goto-tab="loads">⚙️ إعدادات اللوحة والأحمال</button>
+        <button class="app-menu-item" data-goto-tab="results">📊 نتائج الحسابات</button>
+        <button class="app-menu-item" data-goto-tab="sld">🗺️ مخطط اللوحة (SLD)</button>
+        <button class="app-menu-item" data-goto-tab="methodology">📘 طريقة الحساب والمعادلات</button>
+        <div class="app-menu-sep"></div>
+        <button class="app-menu-item" id="menu-project-overview">🗂 المخطط العام لكل اللوحات</button>
+      </div>
+    </div>
+    <div class="app-menu">
+      <button class="app-menu-btn" data-menu="help">❓ مساعدة</button>
+      <div class="app-menu-list" data-menu-list="help">
+        <button class="app-menu-item" id="menu-about">ℹ️ عن البرنامج</button>
+        <button class="app-menu-item" id="menu-help-methodology">📘 طريقة الحساب والمعادلات</button>
+      </div>
+    </div>
+  </nav>
+
+
+
+  <!-- Persistence-degraded warning (hidden unless a save actually fails) -->
+  <div id="persist-warning" style="display:none" class="bg-[rgba(193,120,23,.10)] text-[#8A5A0C] text-[12px] px-4 py-2 border-b border-[var(--border)] items-start gap-2">
+    <span class="font-bold">تنبيه تخزين:</span>
+    <span>مش قادر يحفظ بشكل دائم في المكان اللي بتفتح منه التطبيق دلوقتي، فبياناتك هتفضل شغالة طول ما الصفحة مفتوحة بس هتتفقد لو عملت تحديث (Refresh). لحفظ دائم، نزّل الملف وافتحه بمتصفح Chrome مباشرة.</span>
+  </div>
+
+  <div class="flex flex-1 overflow-hidden">
+    <!-- Sidebar -->
+    <aside class="w-72 shrink-0 border-l border-[var(--border)] bg-[var(--panel)] flex flex-col overflow-hidden">
+      <div class="p-3 border-b border-[var(--border)]">
+        <button id="btn-new-project" class="w-full btn-copper rounded-lg py-2 text-sm">+ مشروع جديد</button>
+      </div>
+      <div id="projects-list" class="flex-1 overflow-y-auto scrollbar-thin p-2 space-y-1"></div>
+
+      <div class="border-t border-[var(--border)] p-3" id="panels-section" style="display:none">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-xs font-bold text-[var(--ink-soft)]">اللوحات</h3>
+          <button id="btn-new-panel" class="text-[var(--copper)] text-xs font-bold">+ إضافة لوحة</button>
+        </div>
+        <div id="panels-list" class="space-y-1 max-h-[38vh] overflow-y-auto scrollbar-thin"></div>
+        <button id="btn-project-overview" class="w-full mt-3 btn-navy rounded-lg py-2 text-xs">🗺 المخطط العام (كل اللوحات مع بعض)</button>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="flex-1 overflow-y-auto scrollbar-thin" id="main-area">
+      <div class="flex items-center justify-center h-full text-[var(--ink-soft)] text-sm" id="empty-state">
+        اختر أو أنشئ مشروعاً جديداً من القائمة الجانبية للبدء
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+/* ============================== DATA / CONSTANTS ============================== */
+
+const STD_BREAKERS = [6,10,16,20,25,32,40,50,63,80,100,125,160,200,225,250,315,400,500,630,800,1000,1250,1600,2000,2500];
+
+// Cable constructions as commonly specified in Egyptian/Middle-East market practice.
+// `insulation` feeds the same ampacity/temperature-correction tables used everywhere else —
+// this is what lets "cable type" be a per-circuit choice instead of one fixed panel setting.
+const CABLE_TYPE_CATALOG = [
+  {id:'pvc_pvc',       label:'PVC/PVC — كابل عادي غير مدرّع',        insulation:'pvc',  armored:false},
+  {id:'nyy',           label:'NYY — نحاس PVC/PVC غير مدرّع',          insulation:'pvc',  armored:false},
+  {id:'nycwy',         label:'NYCWY — مدرّع بأسلاك صلب (PVC)',       insulation:'pvc',  armored:true},
+  {id:'xlpe_pvc',      label:'XLPE/PVC (N2XY) — غير مدرّع',           insulation:'xlpe', armored:false},
+  {id:'xlpe_swa_pvc',  label:'XLPE/SWA/PVC (N2XSY) — مدرّع',          insulation:'xlpe', armored:true},
+];
+function cableTypeInfo(id){ return CABLE_TYPE_CATALOG.find(c=>c.id===id) || CABLE_TYPE_CATALOG[3]; }
+
+// Breaker "family" — governs which physical device range applies. Ranges overlap in real
+// catalogues; this is a starting suggestion the engineer can always override.
+const BREAKER_TYPE_LABEL = {MCB:'MCB — مفتاح تلقائي مصغّر', MCCB:'MCCB — قاطع مصبوب', ACB:'ACB — قاطع هواء'};
+function suggestBreakerType(ratingA){
+  if(ratingA <= 100) return 'MCB';
+  if(ratingA <= 1600) return 'MCCB';
+  return 'ACB';
+}
+// Standard breaking-capacity (Icu) steps commonly offered across MCB/MCCB/ACB ranges (kA).
+const STD_ICU_KA = [4.5, 6, 10, 16, 20, 25, 36, 50, 65, 85, 100, 120];
+function suggestIcu(faultKA){
+  return STD_ICU_KA.find(k => k >= faultKA) || STD_ICU_KA[STD_ICU_KA.length-1];
+}
+// Standard busbar current ratings (A) as typically offered by switchgear/panel manufacturers.
+const STD_BUSBAR_A = [100, 160, 200, 250, 315, 400, 630, 800, 1000, 1250, 1600, 2000, 2500, 3200, 4000];
+function suggestBusbarRating(incomerA){
+  return STD_BUSBAR_A.find(a => a >= incomerA) || STD_BUSBAR_A[STD_BUSBAR_A.length-1];
+}
+
+// Base ampacity (A) — IEC 60364-5-52 style, Copper, 30°C ambient ref, 3 loaded conductors.
+// Two directly-referenced installation groups (B1 = enclosed in conduit, E = free-air multicore)
+// anchor the table; other IEC reference methods are derived from these via documented
+// relative-capacity factors (INSTALL_METHOD_FACTOR below) rather than separately
+// hand-typed for every method, to keep the underlying anchor numbers consistent.
+const CABLE_TABLE = [
+ {size:1.5, b1_pvc:17.5, b1_xlpe:23, e_pvc:23, e_xlpe:26, vd:29},
+ {size:2.5, b1_pvc:24,   b1_xlpe:31, e_pvc:31, e_xlpe:36, vd:18},
+ {size:4,   b1_pvc:32,   b1_xlpe:42, e_pvc:42, e_xlpe:49, vd:11},
+ {size:6,   b1_pvc:41,   b1_xlpe:54, e_pvc:54, e_xlpe:63, vd:7.3},
+ {size:10,  b1_pvc:57,   b1_xlpe:75, e_pvc:75, e_xlpe:86, vd:4.4},
+ {size:16,  b1_pvc:76,   b1_xlpe:100,e_pvc:100,e_xlpe:115,vd:2.8},
+ {size:25,  b1_pvc:101,  b1_xlpe:133,e_pvc:127,e_xlpe:149,vd:1.75},
+ {size:35,  b1_pvc:125,  b1_xlpe:164,e_pvc:158,e_xlpe:185,vd:1.25},
+ {size:50,  b1_pvc:151,  b1_xlpe:198,e_pvc:192,e_xlpe:225,vd:0.93},
+ {size:70,  b1_pvc:192,  b1_xlpe:253,e_pvc:246,e_xlpe:289,vd:0.63},
+ {size:95,  b1_pvc:232,  b1_xlpe:306,e_pvc:298,e_xlpe:352,vd:0.47},
+ {size:120, b1_pvc:269,  b1_xlpe:354,e_pvc:346,e_xlpe:410,vd:0.37},
+ {size:150, b1_pvc:300,  b1_xlpe:393,e_pvc:395,e_xlpe:473,vd:0.30},
+ {size:185, b1_pvc:341,  b1_xlpe:449,e_pvc:450,e_xlpe:542,vd:0.24},
+ {size:240, b1_pvc:400,  b1_xlpe:528,e_pvc:538,e_xlpe:641,vd:0.19},
+ {size:300, b1_pvc:458,  b1_xlpe:603,e_pvc:621,e_xlpe:741,vd:0.15},
+];
+
+// IEC 60364-5-52 reference installation methods, grouped by category, derived from the
+// B1 (enclosed/conduit) and E (free-air multicore) anchor columns above via relative
+// capacity factors. Values are engineering approximations for preliminary design.
+const INSTALL_METHODS = {
+  a1: {label:'مواسير في حائط معزول حرارياً (A1)', group:'enclosed', base:'b1', factor:0.72},
+  a2: {label:'كابل متعدد القلوب في مواسير بحائط معزول (A2)', group:'enclosed', base:'b1', factor:0.80},
+  b1: {label:'مواسير/مجاري على الحائط (B1)', group:'enclosed', base:'b1', factor:1.00},
+  b2: {label:'كابل متعدد القلوب في مواسير على الحائط (B2)', group:'enclosed', base:'b1', factor:0.97},
+  c:  {label:'تثبيت مباشر على الحائط/سلم كابلات مغلق (C)', group:'tray', base:'b1', factor:1.15},
+  d1: {label:'مدفون مباشرة بالتربة (D1)', group:'buried', base:'b1', factor:0.95},
+  d2: {label:'في ماسورة مدفونة بالتربة (D2)', group:'buried', base:'b1', factor:0.85},
+  e:  {label:'كابل متعدد القلوب في الهواء الطلق/سلم كابلات مفتوح (E)', group:'tray', base:'e', factor:1.00},
+  f:  {label:'كابلات أحادية القلب متلامسة في الهواء الطلق (F)', group:'tray', base:'e', factor:1.05},
+  g:  {label:'كابلات أحادية القلب متباعدة في الهواء الطلق (G)', group:'tray', base:'e', factor:1.25},
+};
+const INSTALL_METHOD_GROUPS = {
+  enclosed: 'مواسير/مجاري مغلقة',
+  tray: 'سلم كابلات / تثبيت مباشر',
+  buried: 'مدفون بالتربة',
+};
+
+// Conductor material factor (applied to ampacity) and resistivity factor (applied to
+// voltage-drop mV/A/m) — aluminum ≈78% of copper's current rating for the same csa,
+// and roughly 1.6× the voltage drop per metre, as commonly-cited approximations.
+const CONDUCTOR_FACTOR = {
+  copper:   {ampacity:1.00, vd:1.00},
+  aluminum: {ampacity:0.78, vd:1.60},
+};
+
+// Short-circuit thermal-withstand constant 'k' — IEC 60364-5-54, Table 43A (S²k² ≥ I²t rule).
+// This is a check that's easy to skip in a simplified tool but genuinely matters: even a cable
+// with plenty of steady-state ampacity can still be thermally destroyed by a fault current it
+// wasn't sized to survive for the time the breaker takes to clear it.
+const SC_K_FACTOR = {
+  copper:   {pvc:115, xlpe:143},
+  aluminum: {pvc:76,  xlpe:94},
+};
+// Minimum cross-section (mm²) that survives `iFaultKA` for `tSeconds`: S = (I·√t) / k.
+function minScCrossSection(iFaultKA, tSeconds, conductor, insulation){
+  const k = (SC_K_FACTOR[conductor]||SC_K_FACTOR.copper)[insulation] || 115;
+  const iFaultA = iFaultKA*1000;
+  return (iFaultA * Math.sqrt(tSeconds)) / k;
+}
+
+// Ambient temperature correction factors (ref 30°C) — IEC 60364-5-52, Table B.52.14
+const TEMP_CORR = {
+  pvc:  {10:1.22, 15:1.17, 20:1.12, 25:1.06, 30:1.00, 35:0.94, 40:0.87, 45:0.79, 50:0.71, 55:0.61, 60:0.50},
+  xlpe: {10:1.15, 15:1.12, 20:1.08, 25:1.04, 30:1.00, 35:0.96, 40:0.91, 45:0.87, 50:0.82, 55:0.76, 60:0.71},
+};
+function tempCorrFactor(insulation, temp){
+  const table = TEMP_CORR[insulation];
+  const keys = Object.keys(table).map(Number).sort((a,b)=>a-b);
+  let best = keys[0];
+  for(const k of keys){ if(temp>=k) best=k; }
+  return table[best];
+}
+
+// Grouping correction (number of circuits together)
+const GROUP_CORR = {1:1.0, 2:0.85, 3:0.79, 4:0.75, 5:0.72, 6:0.70, 7:0.68, 8:0.66};
+function groupCorrFactor(n){
+  n = Math.max(1, Math.min(8, n||1));
+  return GROUP_CORR[n];
+}
+
+const MOTOR_START_FACTOR = {DOL:6.5, SD:2.2, VFD:1.2, SS:3.5, NONE:1};
+const MOTOR_START_LABEL = {DOL:'مباشر (DOL)', SD:'نجمة-مثلث', VFD:'محرك متغير التردد', SS:'مشغل ناعم', NONE:'—'};
+
+// Chiller compressor inrush (LRA/FLA) tends to run higher than a general-purpose motor of the
+// same kW, especially for hermetic scroll/screw compressors. These are typical ranges only —
+// always confirm against the actual compressor's nameplate LRA before finalizing a design.
+const CHILLER_START_FACTOR = {DOL:6.0, SD:2.4, VFD:1.2, SS:3.0, NONE:1};
+
+/* ============================== STORAGE HELPERS ============================== */
+
+/* Three layers, most reliable first:
+   1) an in-memory cache — always works, guarantees the UI reflects what you just
+      did in THIS session even if a backend below is flaky or blocked.
+   2) window.storage — Claude's persistent storage (works in chat previews).
+   3) localStorage — works when the file is downloaded and opened directly.
+   Every write updates the memory cache immediately; persistence to (2)/(3) is
+   attempted in the background and never blocks the UI from updating. */
+const memStore = new Map();
+const hasClaudeStorage = (typeof window.storage !== 'undefined') && window.storage && typeof window.storage.get === 'function';
+let persistDegraded = false;
+
+async function kvGet(key){
+  if(memStore.has(key)) return memStore.get(key);
+  if(hasClaudeStorage){
+    try{
+      const r = await window.storage.get(key, false);
+      const v = r ? r.value : null;
+      if(v!=null) memStore.set(key, v);
+      return v;
+    }catch(e){ /* fall through */ }
+  }
+  try{
+    const v = localStorage.getItem(key);
+    if(v!=null) memStore.set(key, v);
+    return v;
+  }catch(e){ return null; }
+}
+async function kvSet(key, value){
+  memStore.set(key, value); // UI can rely on this immediately, regardless of what happens below
+  let ok = false;
+  if(hasClaudeStorage){
+    try{ await window.storage.set(key, value, false); ok = true; }
+    catch(e){ console.error('storage set failed (window.storage)', e); }
+  }
+  if(!ok){
+    try{ localStorage.setItem(key, value); ok = true; }
+    catch(e){ console.error('storage set failed (localStorage)', e); }
+  }
+  if(!ok) flagPersistDegraded();
+}
+function flagPersistDegraded(){
+  if(persistDegraded) return;
+  persistDegraded = true;
+  const bar = document.getElementById('persist-warning');
+  if(bar) bar.style.display = 'flex';
+}
+async function kvDelete(key){
+  memStore.delete(key);
+  if(hasClaudeStorage){
+    try{ await window.storage.delete(key, false); return; }
+    catch(e){ /* fall through */ }
+  }
+  try{ localStorage.removeItem(key); } catch(e){ /* ignore */ }
+}
+
+async function loadProjectsIndex(){
+  const v = await kvGet('projects-index');
+  return v ? JSON.parse(v) : [];
+}
+async function saveProjectsIndex(idx){
+  await kvSet('projects-index', JSON.stringify(idx));
+}
+async function loadProject(id){
+  const v = await kvGet('project:'+id);
+  return v ? JSON.parse(v) : null;
+}
+async function saveProject(proj){
+  setSaving(true);
+  await kvSet('project:'+proj.id, JSON.stringify(proj));
+  setSaving(false);
+}
+function setSaving(on){
+  const el = document.getElementById('save-indicator');
+  el.textContent = on ? 'جارٍ الحفظ...' : 'تم الحفظ';
+  if(!on) setTimeout(()=>{ if(el.textContent==='تم الحفظ') el.textContent='جاهز'; }, 1500);
+}
+
+/* ============================== IN-PAGE DIALOGS ==============================
+   Native window.prompt()/confirm() get silently blocked inside sandboxed
+   previews (like Claude's chat preview), which makes buttons look "dead".
+   These custom in-page dialogs work everywhere. */
+function showDialog({title, message='', placeholder='', defaultValue='', confirmText='حفظ', isConfirm=false}){
+  return new Promise(resolve=>{
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;';
+    const box = document.createElement('div');
+    box.style.cssText = 'background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:20px;max-width:360px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.5);';
+    box.innerHTML = `
+      <h3 style="color:var(--ink);font-weight:800;margin:0 0 10px;font-size:15px;">${escapeHtml(title)}</h3>
+      ${message ? `<p style="color:var(--ink-soft);font-size:13px;margin:0 0 12px;">${escapeHtml(message)}</p>` : ''}
+      ${!isConfirm ? `<input id="dlg-input" type="text" value="${escapeAttr(defaultValue)}" placeholder="${escapeAttr(placeholder)}" style="width:100%;border:1px solid var(--border);background:var(--panel-2);color:var(--ink);border-radius:8px;padding:9px 10px;font-size:14px;margin-bottom:14px;box-sizing:border-box;">` : ''}
+      <div style="display:flex;gap:8px;justify-content:flex-start;">
+        <button id="dlg-ok" style="padding:8px 16px;border-radius:8px;background:var(--copper);color:#08161A;font-size:13px;font-weight:700;border:none;">${escapeHtml(confirmText)}</button>
+        <button id="dlg-cancel" style="padding:8px 16px;border-radius:8px;background:var(--panel-2);color:var(--ink);font-size:13px;font-weight:700;border:1px solid var(--border);">إلغاء</button>
+      </div>
+    `;
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    const input = box.querySelector('#dlg-input');
+    if(input){ input.focus(); input.select(); }
+    function cleanup(val){ document.body.removeChild(overlay); resolve(val); }
+    box.querySelector('#dlg-cancel').onclick = ()=>cleanup(isConfirm ? false : null);
+    box.querySelector('#dlg-ok').onclick = ()=>cleanup(isConfirm ? true : (input.value.trim() || null));
+    overlay.addEventListener('click', (e)=>{ if(e.target===overlay) cleanup(isConfirm ? false : null); });
+    if(input){
+      input.addEventListener('keydown', e=>{
+        if(e.key==='Enter'){ cleanup(input.value.trim() || null); }
+        if(e.key==='Escape'){ cleanup(null); }
+      });
+    }
+  });
+}
+async function promptText(title, placeholder, defaultValue=''){
+  return showDialog({title, placeholder, defaultValue, confirmText:'حفظ'});
+}
+async function confirmDialog(title, message){
+  return showDialog({title, message, isConfirm:true, confirmText:'تأكيد الحذف'});
+}
+
+function uid(prefix){ return prefix+'_'+Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4); }
+
+/* ============================== APP STATE ============================== */
+
+const State = {
+  projectsIndex: [],
+  currentProject: null,
+  currentPanelId: null,
+  activeTab: 'loads', // loads | results | sld
+  viewMode: 'panel', // panel | project-sld
+};
+
+function defaultPanel(name){
+  return {
+    id: uid('panel'),
+    name: name || 'لوحة جديدة',
+    type: 'مختلط',
+    sourceType: 'main', // 'main' (from transformer/utility) | 'sub' (fed from another panel in this project)
+    parentPanelId: null,
+    voltage: 400,
+    phases: 3,
+    insulation: 'pvc',
+    conductor: 'copper',
+    installMethod: 'b1', // b1 (conduit) | e (tray/clipped)
+    ambientTemp: 40,
+    groupingCircuits: 3,
+    diversityFactor: 0.8,
+    transformerKVA: 630,
+    transformerZ: 6,
+    upstreamIscOverrideKA: null,
+    incomerCableLength: 15,
+    busbarRatingA: null,        // null = auto (next standard size ≥ incomer breaker)
+    busbarBracingKA: null,      // null = auto (next standard value ≥ Isc)
+    incomerBreakerType: 'auto', // 'auto' | 'MCB' | 'MCCB' | 'ACB'
+    incomerBreakerIcu: null,    // null = auto (next standard kA ≥ Isc)
+    vectorGroup: 'Dyn11',       // transformer connection/vector group, shown on the SLD
+    faultClearTimeSec: 0.1,     // assumed breaker clearing time, used for cable S²k²≥I²t check
+    loads: []
+  };
+}
+function defaultLoad(name){
+  return {
+    id: uid('load'),
+    name: name || 'حمل جديد',
+    type: 'motor', // motor | general | lighting | chiller
+    phases: 3,
+    kw: 5.5,
+    pf: 0.85,
+    eff: 0.90,
+    qty: 1,
+    demandFactor: 1,
+    cableLength: 30,
+    startMethod: 'DOL',
+    standby: false,
+    // Chiller-only fields: lets kW be derived from cooling capacity instead of typed directly.
+    chillerInputMode: 'kw', // 'kw' | 'tr'
+    coolingTR: 0,
+    kwPerTon: 1.0,
+    cableType: 'xlpe_pvc',    // see CABLE_TYPE_CATALOG — drives insulation/armor for THIS circuit
+    breakerType: 'auto',      // 'auto' | 'MCB' | 'MCCB' | 'ACB'
+    breakerIcu: null,         // null = auto (next standard kA ≥ upstream Isc)
+  };
+}
+
+/* ============================== CALCULATIONS ============================== */
+
+// A chiller can be specified either directly in electrical kW, or via cooling capacity (TR)
+// + a kW/TR performance factor — this resolves either input into the single kW figure that
+// every downstream calculation (FLC, cable, breaker) actually uses.
+function effectiveLoadKW(load){
+  if(load.type==='chiller' && load.chillerInputMode==='tr'){
+    return (load.coolingTR||0) * (load.kwPerTon||0);
+  }
+  return load.kw;
+}
+
+function calcFLC(load){
+  const P = effectiveLoadKW(load)*1000;
+  const V = load.phases===3 ? 400 : 230; // assume std voltages; refined by panel voltage below if needed
+  // Efficiency only makes physical sense for motors (mechanical output -> electrical input).
+  // Applying it to lighting/general/chiller loads artificially inflates the design current —
+  // a chiller's kW/TR figure already represents electrical input, not shaft output.
+  const eff = load.type==='motor' ? (load.eff||1) : 1;
+  if(load.phases===3){
+    return P/(Math.sqrt(3)*V*load.pf*eff);
+  }else{
+    return P/(V*load.pf*eff);
+  }
+}
+
+function pickCableAndBreaker(panel, designCurrent, insulationOverride){
+  const insul = insulationOverride || panel.insulation;
+  const methodKey = panel.installMethod || 'b1';
+  const method = INSTALL_METHODS[methodKey] || INSTALL_METHODS.b1;
+  const baseCol = method.base==='e' ? (insul==='pvc'?'e_pvc':'e_xlpe') : (insul==='pvc'?'b1_pvc':'b1_xlpe');
+  const conductor = panel.conductor || 'copper';
+  const condF = CONDUCTOR_FACTOR[conductor] || CONDUCTOR_FACTOR.copper;
+
+  const ca = tempCorrFactor(insul, panel.ambientTemp);
+  const cg = groupCorrFactor(panel.groupingCircuits);
+  const totalCorr = ca*cg;
+
+  function izFor(row){
+    return row[baseCol] * method.factor * condF.ampacity * totalCorr;
+  }
+  function vdFor(row){
+    return row.vd * condF.vd;
+  }
+  function deriveMeta(row){
+    return {
+      baseAmpacity: row[baseCol],
+      installFactor: method.factor,
+      methodLabel: method.label,
+      condFactorAmpacity: condF.ampacity,
+      condFactorVd: condF.vd,
+      vdTableValue: row.vd,
+      ca, cg,
+    };
+  }
+
+  let chosen = null;
+  for(const row of CABLE_TABLE){
+    const izCorrected = izFor(row);
+    if(izCorrected >= designCurrent){
+      chosen = {size: row.size, izCorrected: izCorrected, vd: vdFor(row), ...deriveMeta(row)};
+      break;
+    }
+  }
+  if(!chosen){
+    const last = CABLE_TABLE[CABLE_TABLE.length-1];
+    chosen = {size: last.size, izCorrected: izFor(last), vd: vdFor(last), oversized:true, ...deriveMeta(last)};
+  }
+  // breaker: next standard >= design current, and <= cable corrected capacity
+  let breaker = STD_BREAKERS.find(b=> b>=designCurrent);
+  if(!breaker) breaker = STD_BREAKERS[STD_BREAKERS.length-1];
+  // ensure cable can carry the breaker rating too (In <= Iz)
+  while(chosen.izCorrected < breaker){
+    const idx = CABLE_TABLE.findIndex(r=>r.size===chosen.size);
+    if(idx < CABLE_TABLE.length-1){
+      const row = CABLE_TABLE[idx+1];
+      chosen = {size: row.size, izCorrected: izFor(row), vd: vdFor(row), ...deriveMeta(row)};
+    } else break;
+  }
+  return {...chosen, breaker, ca, cg};
+}
+
+function calcLoad(panel, load, upstreamIscKA){
+  const flc = calcFLC(load);
+  const ib = flc * (load.demandFactor||1);
+  const isMotorLike = load.type==='motor' || load.type==='chiller';
+  const startFactorTable = load.type==='chiller' ? CHILLER_START_FACTOR : MOTOR_START_FACTOR;
+  const startFactor = isMotorLike ? (startFactorTable[load.startMethod] || 1) : 1;
+  const startingCurrent = isMotorLike ? flc*startFactor : flc;
+
+  const ct = cableTypeInfo(load.cableType);
+  const sel = pickCableAndBreaker(panel, ib, ct.insulation);
+  const V = load.phases===3?400:230;
+  const singlePhaseAdj = load.phases===3 ? 1 : 1.15;
+  const vdVolts = (sel.vd * ib * load.cableLength / 1000) * singlePhaseAdj;
+  const vdPercent = (vdVolts / V) * 100;
+
+  // Breaking capacity: every breaker must be able to clear the fault current at its point of
+  // installation. Using the panel-bus Isc for every downstream breaker is conservative (cable
+  // impedance would reduce the real fault current further downstream) but safe as a default.
+  const iscKA = upstreamIscKA || 0;
+  const breakerType = (!load.breakerType || load.breakerType==='auto') ? suggestBreakerType(sel.breaker) : load.breakerType;
+  const breakerIcu = load.breakerIcu || suggestIcu(iscKA);
+  const breakerIcuOk = breakerIcu >= iscKA;
+
+  // Cable thermal withstand under fault (S²k² ≥ I²t, IEC 60364-5-54) — a cable can have plenty
+  // of steady-state ampacity and still be cooked by a fault it wasn't sized to survive.
+  const minScSection = minScCrossSection(iscKA, panel.faultClearTimeSec||0.1, panel.conductor, ct.insulation);
+  const cableScOk = sel.size >= minScSection;
+
+  const warnings = [];
+  if(vdPercent > 5) warnings.push('هبوط الجهد يتجاوز 5%');
+  if(sel.oversized) warnings.push('التيار يتجاوز أكبر مقطع بالجدول - راجع يدوياً');
+  if(isMotorLike && startingCurrent > sel.breaker*10) warnings.push('تيار الإقلاع مرتفع جداً - راجع اختيار القاطع/طريقة التشغيل');
+  if(load.type==='chiller') warnings.push('راجع بيانات الضاغط (LRA) من الكتالوج الفعلي قبل الاعتماد النهائي');
+  if(!breakerIcuOk) warnings.push(`⚠ قدرة القطع (${breakerIcu}kA) أقل من مستوى القصر (${round1(iscKA)}kA) — ارفعها`);
+  if(!cableScOk) warnings.push(`⚠ الكابل قد لا يتحمل حرارياً تيار القصر (يحتاج ≥${round1(minScSection)}مم² عند ${panel.faultClearTimeSec||0.1}ث) — كبّر المقطع أو قصّر زمن الفصل`);
+
+  return {
+    flc: round1(flc),
+    ib: round1(ib),
+    effKw: round1(effectiveLoadKW(load)),
+    startingCurrent: round1(startingCurrent),
+    startFactor,
+    cableSize: sel.size,
+    cableTypeLabel: ct.label,
+    cableArmored: ct.armored,
+    breaker: sel.breaker,
+    breakerType, breakerIcu, breakerIcuOk,
+    minScSection: round1(minScSection), cableScOk,
+    izCorrected: round1(sel.izCorrected),
+    vdVolts: round1(vdVolts),
+    vdPercent: round1(vdPercent),
+    warnings,
+    // raw derivation numbers, kept unrounded, so the printed calc sheet can show the exact
+    // formula chain (base ampacity -> correction factors -> Iz -> breaker -> voltage drop)
+    V, singlePhaseAdj,
+    baseAmpacity: sel.baseAmpacity,
+    installFactor: sel.installFactor,
+    methodLabel: sel.methodLabel,
+    condFactorAmpacity: sel.condFactorAmpacity,
+    condFactorVd: sel.condFactorVd,
+    vdTableValue: sel.vdTableValue,
+    ca: sel.ca, cg: sel.cg,
+  };
+}
+
+function calcPanelSummary(panel, visited){
+  visited = visited || new Set();
+  const allPanels = (State.currentProject && State.currentProject.panels) || [];
+  const childPanels = allPanels.filter(p => p.parentPanelId === panel.id && !visited.has(p.id));
+  const childVisited = new Set(visited); childVisited.add(panel.id);
+
+  // Upstream short circuit estimate — computed FIRST because breaker breaking-capacity (Icu)
+  // suggestions/checks for every load and the main incomer both need this number.
+  let iscKA;
+  if(panel.upstreamIscOverrideKA){
+    iscKA = panel.upstreamIscOverrideKA;
+  } else if(panel.sourceType==='sub' && panel.parentPanelId && !visited.has(panel.parentPanelId)){
+    const parent = allPanels.find(p=>p.id===panel.parentPanelId);
+    if(parent){
+      const parentVisited = new Set(visited); parentVisited.add(panel.id);
+      iscKA = calcPanelSummary(parent, parentVisited).iscKA;
+    } else {
+      iscKA = 0;
+    }
+  } else {
+    const V = panel.voltage;
+    const isc = (panel.transformerKVA*1000) / (Math.sqrt(3)*V*(panel.transformerZ/100));
+    iscKA = isc/1000;
+  }
+
+  const results = panel.loads.map(l=>({load:l, r: calcLoad(panel,l,iscKA)}));
+
+  const childSummaries = childPanels.map(cp => ({panel: cp, summary: calcPanelSummary(cp, childVisited)}));
+
+  const totalConnectedKW = panel.loads.reduce((s,l)=> s + effectiveLoadKW(l)*(l.qty||1), 0)
+    + childSummaries.reduce((s,c)=> s + c.summary.totalConnectedKW, 0);
+
+  const loadsIbSum = results.reduce((s,x)=> s + x.r.ib*(x.load.qty||1), 0);
+  const childIbSum = childSummaries.reduce((s,c)=> s + c.summary.incomerDesignCurrent, 0);
+  const totalIbSum = loadsIbSum + childIbSum;
+
+  const incomerDesignCurrent = totalIbSum * (panel.diversityFactor||1);
+  const incomerSel = pickCableAndBreaker(panel, incomerDesignCurrent, panel.insulation);
+
+  // Main incomer breaker type/breaking-capacity — auto-suggested but overridable, always
+  // checked against this panel's own Isc (the fault level the incomer must actually clear).
+  const incomerBreakerType = (!panel.incomerBreakerType || panel.incomerBreakerType==='auto') ? suggestBreakerType(incomerSel.breaker) : panel.incomerBreakerType;
+  const incomerIcu = panel.incomerBreakerIcu || suggestIcu(iscKA);
+  const incomerIcuOk = incomerIcu >= iscKA;
+
+  // Main busbar rating — auto-suggested but overridable, must carry at least the incomer
+  // breaker's rating and withstand at least the fault level.
+  const busbarRatingA = panel.busbarRatingA || suggestBusbarRating(incomerSel.breaker);
+  const busbarBracingKA = panel.busbarBracingKA || suggestIcu(iscKA);
+  const busbarRatingOk = busbarRatingA >= incomerSel.breaker;
+  const busbarBracingOk = busbarBracingKA >= iscKA;
+
+  // Main incomer cable's own thermal withstand under fault — same S²k²≥I²t rule as every
+  // downstream load, just applied to the incomer's own cable/insulation choice.
+  const incomerMinScSection = minScCrossSection(iscKA, panel.faultClearTimeSec||0.1, panel.conductor, panel.insulation);
+  const incomerCableScOk = incomerSel.size >= incomerMinScSection;
+
+  // Discrimination/selectivity: the incomer breaker should be enough larger than any single
+  // downstream breaker that a fault on one feeder trips ONLY that feeder, not the whole panel.
+  // A ~1.6:1 minimum ratio is a common rule-of-thumb absent a full manufacturer discrimination
+  // table — only meaningful when there's more than one circuit sharing the incomer.
+  const multiCircuit = (panel.loads.length + childSummaries.length) > 1;
+  if(multiCircuit){
+    results.forEach(({r})=>{
+      if(incomerSel.breaker / r.breaker < 1.6){
+        r.warnings.push(`⚠ فرق التصنيف بين هذا القاطع (${r.breaker}A) والقاطع الرئيسي (${incomerSel.breaker}A) صغير — قد لا يتحقق التنسيق/الانتقائية بينهما`);
+      }
+    });
+  }
+
+  return {
+    results,
+    childSummaries,
+    totalConnectedKW: round1(totalConnectedKW),
+    incomerDesignCurrent: round1(incomerDesignCurrent),
+    incomerCableSize: incomerSel.size,
+    incomerBreaker: incomerSel.breaker,
+    incomerIzCorrected: round1(incomerSel.izCorrected),
+    incomerBreakerType, incomerIcu, incomerIcuOk,
+    incomerMinScSection: round1(incomerMinScSection), incomerCableScOk,
+    busbarRatingA, busbarBracingKA, busbarRatingOk, busbarBracingOk,
+    iscKA: round1(iscKA),
+  };
+}
+
+function round1(n){ return Math.round(n*10)/10; }
+
+// Opens a print-preview window that includes its own on-screen control bar (رجوع/طباعة),
+// because inside the packaged WebView app these windows have no browser chrome/back button
+// of their own — without this bar the user gets stuck on the preview with no way out.
+function openPrintWindow(title, bodyHtml, extraHeadHtml){
+  const w = window.open('', '_blank');
+  const html = `<!DOCTYPE html>
+  <html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>${escapeHtml(title)}</title>
+  <style>
+    *{box-sizing:border-box;}
+    body{margin:0; font-family:Arial,Tahoma,sans-serif; color:#16233B; background:#FBFAF6;}
+    #print-toolbar{
+      position:sticky; top:0; z-index:50; display:flex; gap:8px; align-items:center; justify-content:flex-start;
+      background:#0B2545; padding:10px 16px; box-shadow:0 2px 8px rgba(0,0,0,.2);
+    }
+    #print-toolbar button{
+      border:none; border-radius:8px; padding:9px 16px; font-size:13px; font-weight:700; cursor:pointer;
+    }
+    #btn-pw-back{background:#F0F2F6; color:#16233B;}
+    #btn-pw-print{background:#C17817; color:white;}
+    #print-body{padding:16px;}
+    @media print{ #print-toolbar{display:none;} #print-body{padding:0;} body{background:white;} }
+    ${extraHeadHtml || ''}
+  </style></head>
+  <body>
+    <div id="print-toolbar">
+      <button id="btn-pw-back">← رجوع</button>
+      <button id="btn-pw-print" style="font-size:15px;">🖨 طباعة / حفظ PDF</button>
+    </div>
+    <div id="print-body">${bodyHtml}</div>
+    <script>
+      document.getElementById('btn-pw-back').onclick = function(){
+        // In some embedded WebViews (the packaged app), window.close() on a window that
+        // wasn't opened via a real popup gesture is silently ignored — no error, it just
+        // does nothing, leaving the person stuck on this screen. Try close(), then fall
+        // back to history.back(), then finally show a plain message so it's never a dead end.
+        window.close();
+        setTimeout(function(){
+          if(window.history.length > 1){ window.history.back(); }
+          else {
+            document.body.innerHTML = '<div style="padding:60px 20px;text-align:center;font-family:Tahoma,Arial,sans-serif;color:#16233B;font-size:15px;">تقدر تقفل الصفحة/التبويب ده يدويًا من متصفحك الآن.</div>';
+          }
+        }, 200);
+      };
+      document.getElementById('btn-pw-print').onclick = function(){ window.print(); };
+    <\/script>
+  </body></html>`;
+  w.document.write(html);
+  w.document.close();
+  return w;
+}
+
+// Standard transformer ratings (kVA), IEC/local-market common sizes.
+const STD_TRANSFORMER_KVA = [25,50,75,100,160,200,250,315,400,500,630,800,1000,1250,1600,2000,2500,3150];
+
+// Suggests a transformer size from the panel's OWN calculated demand (loads + fed sub-panels),
+// with a spare-capacity margin for future loads — rather than leaving kVA as a disconnected
+// manual field that never reflects what's actually connected.
+function suggestTransformerKVA(panel, marginFactor){
+  marginFactor = marginFactor || 1.25; // ~25% spare capacity for future loads/growth
+  const summary = calcPanelSummary(panel);
+  const assumedPF = 0.85;
+  const requiredKVA = (summary.totalConnectedKW * (panel.diversityFactor||1) / assumedPF) * marginFactor;
+  const std = STD_TRANSFORMER_KVA.find(k => k >= requiredKVA);
+  return {
+    totalConnectedKW: summary.totalConnectedKW,
+    requiredKVA: round1(requiredKVA),
+    suggestedKVA: std || STD_TRANSFORMER_KVA[STD_TRANSFORMER_KVA.length-1],
+  };
+}
+
+/* ============================== RENDER: PROJECTS LIST ============================== */
+
+async function init(){
+  try {
+    State.projectsIndex = await loadProjectsIndex();
+    renderProjectsList();
+  } catch(err){
+    console.error('init error:', err);
+    const list = document.getElementById('projects-list');
+    if(list){
+      list.innerHTML = `
+        <div class="p-3 text-center">
+          <p class="text-xs text-[var(--warn)] font-bold mb-2">⚠️ تعذّر تحميل قائمة المشاريع</p>
+          <button id="err-reload-app" class="btn-navy rounded-lg px-3 py-1.5 text-xs">🔄 إعادة تحميل التطبيق</button>
+        </div>`;
+      const btn = document.getElementById('err-reload-app');
+      if(btn) btn.onclick = ()=> location.reload();
+    }
+  }
+}
+
+const AVATAR_PALETTE = ['#22B8CF','#8B7CF6','#34C777','#F5A524','#F0729A','#5EA8F0'];
+function avatarColor(str){
+  let h=0; for(let i=0;i<str.length;i++) h = (h*31 + str.charCodeAt(i)) >>> 0;
+  return AVATAR_PALETTE[h % AVATAR_PALETTE.length];
+}
+
+function renderProjectsList(){
+  const list = document.getElementById('projects-list');
+  list.innerHTML = '';
+  if(State.projectsIndex.length===0){
+    list.innerHTML = '<div class="text-xs text-[var(--ink-soft)] p-3 text-center">لا توجد مشاريع بعد</div>';
+  }
+  State.projectsIndex.forEach(p=>{
+    const btn = document.createElement('button');
+    const active = State.currentProject && State.currentProject.id===p.id;
+    btn.className = 'w-full text-right px-2 py-2 rounded-lg text-sm flex items-center gap-2 ' +
+      (active ? 'bg-[rgba(193,120,23,.14)] text-[var(--copper)] font-bold' : 'hover:bg-[var(--panel-2)] text-[var(--ink)]');
+    const color = avatarColor(p.name||p.id);
+    btn.innerHTML = `<span class="rounded-full flex items-center justify-center shrink-0" style="width:26px;height:26px;background:${color};color:#0B0D12;font-size:12px;font-weight:800;">${escapeHtml((p.name||'?').trim().slice(0,1))}</span><span class="truncate">${escapeHtml(p.name)}</span>`;
+    btn.onclick = ()=> selectProject(p.id);
+    list.appendChild(btn);
+  });
+}
+
+async function selectProject(id){
+  const proj = await loadProject(id);
+  if(!proj) return;
+  State.currentProject = proj;
+  State.currentPanelId = proj.panels[0] ? proj.panels[0].id : null;
+  State.viewMode = 'panel';
+  document.getElementById('panels-section').style.display = 'block';
+  renderProjectsList();
+  renderPanelsList();
+  renderMain();
+}
+
+document.getElementById('btn-new-project').onclick = async ()=>{
+  const name = await promptText('مشروع جديد', 'مثال: محطة معالجة أم دينار');
+  if(!name) return;
+  const id = uid('proj');
+  const proj = {id, name, panels: [defaultPanel('اللوحة الرئيسية')], meta: defaultProjectMeta()};
+  await saveProject(proj);
+  State.projectsIndex.push({id, name});
+  await saveProjectsIndex(State.projectsIndex);
+  await selectProject(id);
+};
+
+/* ---- Application menu bar (File / View / Help) ---- */
+
+document.querySelectorAll('.app-menu-btn').forEach(btn=>{
+  btn.onclick = (e)=>{
+    e.stopPropagation();
+    const list = document.querySelector(`[data-menu-list="${btn.dataset.menu}"]`);
+    const wasOpen = list.classList.contains('open');
+    document.querySelectorAll('.app-menu-list').forEach(l=>l.classList.remove('open'));
+    document.querySelectorAll('.app-menu-btn').forEach(b=>b.classList.remove('active'));
+    if(!wasOpen){ list.classList.add('open'); btn.classList.add('active'); }
+  };
+});
+document.addEventListener('click', ()=>{
+  document.querySelectorAll('.app-menu-list').forEach(l=>l.classList.remove('open'));
+  document.querySelectorAll('.app-menu-btn').forEach(b=>b.classList.remove('active'));
+});
+
+document.getElementById('menu-new-project').onclick = ()=> document.getElementById('btn-new-project').click();
+
+document.getElementById('menu-export-project').onclick = ()=>{
+  if(!State.currentProject){ alertMsg('افتح مشروعاً الأول عشان تصدّره.'); return; }
+  const blob = new Blob([JSON.stringify(State.currentProject, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (State.currentProject.name||'project').replace(/[^\w\u0600-\u06FF-]+/g,'_') + '.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+document.getElementById('menu-import-project').onclick = ()=> document.getElementById('menu-import-file').click();
+document.getElementById('menu-import-file').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  try{
+    const text = await file.text();
+    const proj = JSON.parse(text);
+    if(!proj || !Array.isArray(proj.panels)) throw new Error('ملف غير صالح');
+    proj.id = uid('proj'); // avoid colliding with an existing project id
+    await saveProject(proj);
+    State.projectsIndex.push({id: proj.id, name: proj.name||'مشروع مستورد'});
+    await saveProjectsIndex(State.projectsIndex);
+    await selectProject(proj.id);
+  }catch(err){
+    alertMsg('تعذّر استيراد الملف — تأكد إنه ملف JSON صادر من نفس البرنامج.');
+    console.error('import error', err);
+  }
+  e.target.value = '';
+});
+
+document.getElementById('menu-delete-project').onclick = async ()=>{
+  if(!State.currentProject){ alertMsg('مفيش مشروع مفتوح دلوقتي.'); return; }
+  const ok = await confirmMsg(`متأكد إنك عايز تحذف مشروع "${State.currentProject.name}"؟ الإجراء ده لا يمكن التراجع عنه.`);
+  if(!ok) return;
+  const id = State.currentProject.id;
+  await kvDelete('project:'+id);
+  State.projectsIndex = State.projectsIndex.filter(p=>p.id!==id);
+  await saveProjectsIndex(State.projectsIndex);
+  State.currentProject = null;
+  State.currentPanelId = null;
+  document.getElementById('panels-section').style.display = 'none';
+  renderProjectsList();
+  renderMain();
+};
+
+document.querySelectorAll('[data-goto-tab]').forEach(btn=>{
+  btn.onclick = ()=>{
+    if(!State.currentProject || !currentPanel()){ alertMsg('افتح لوحة الأول من القائمة الجانبية.'); return; }
+    State.viewMode = 'panel';
+    State.activeTab = btn.dataset.gotoTab;
+    renderMain();
+  };
+});
+
+document.getElementById('menu-project-overview').onclick = ()=>{
+  if(!State.currentProject){ alertMsg('افتح مشروعاً الأول.'); return; }
+  State.viewMode = 'project-sld';
+  renderMain();
+};
+
+document.getElementById('menu-help-methodology').onclick = ()=>{
+  const tabBtn = document.querySelector('[data-goto-tab="methodology"]');
+  if(tabBtn) tabBtn.click();
+};
+
+document.getElementById('menu-about').onclick = ()=>{
+  showAboutDialog();
+};
+
+function showAboutDialog(){
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;';
+  const box = document.createElement('div');
+  box.style.cssText = 'background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:24px;max-width:420px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.5);text-align:center;';
+  box.innerHTML = `
+    <div class="w-14 h-14 rounded-lg border-2 border-[var(--copper)] flex items-center justify-center mono font-bold text-[var(--copper)] text-2xl mx-auto mb-3">SLD</div>
+    <h3 style="color:var(--ink);font-weight:800;margin:0 0 6px;font-size:16px;">مُصمِّم الشبكات الكهربائية</h3>
+    <p style="color:var(--ink-soft);font-size:12px;margin:0 0 14px;">أداة حسابات أحمال وكابلات وقواطع ومخططات أحادية الخط (SLD) للجهد المتوسط والمنخفض — مبنية للاستخدام في التصميم المبدئي والمراجعة الهندسية.</p>
+    <p style="color:var(--ink-soft);font-size:11px;margin:0 0 16px;border-top:1px solid var(--border);padding-top:12px;">جميع الحسابات تقريبية للاستخدام الأولي، ولازم تُراجَع مقابل الكود المعتمد للمشروع وبيانات المُصنّع الفعلية قبل الاعتماد النهائي في التنفيذ.</p>
+    <button id="about-close" style="padding:8px 20px;border-radius:8px;background:var(--copper);color:#08161A;font-size:13px;font-weight:700;border:none;">تمام</button>
+  `;
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  const close = ()=> document.body.removeChild(overlay);
+  box.querySelector('#about-close').onclick = close;
+  overlay.addEventListener('click', (e)=>{ if(e.target===overlay) close(); });
+}
+
+function alertMsg(msg){
+  showAboutDialogGeneric(msg);
+}
+function showAboutDialogGeneric(msg){
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;';
+  const box = document.createElement('div');
+  box.style.cssText = 'background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:20px;max-width:360px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.5);text-align:center;';
+  box.innerHTML = `
+    <p style="color:var(--ink);font-size:13px;margin:0 0 16px;">${escapeHtml(msg)}</p>
+    <button id="alert-close" style="padding:8px 20px;border-radius:8px;background:var(--copper);color:#08161A;font-size:13px;font-weight:700;border:none;">تمام</button>
+  `;
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  const close = ()=> document.body.removeChild(overlay);
+  box.querySelector('#alert-close').onclick = close;
+  overlay.addEventListener('click', (e)=>{ if(e.target===overlay) close(); });
+}
+function confirmMsg(msg){
+  return new Promise(resolve=>{
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;';
+    const box = document.createElement('div');
+    box.style.cssText = 'background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:20px;max-width:380px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.5);text-align:center;';
+    box.innerHTML = `
+      <p style="color:var(--ink);font-size:13px;margin:0 0 16px;">${escapeHtml(msg)}</p>
+      <div style="display:flex;gap:8px;justify-content:center;">
+        <button id="confirm-yes" style="padding:8px 20px;border-radius:8px;background:var(--warn);color:white;font-size:13px;font-weight:700;border:none;">حذف</button>
+        <button id="confirm-no" style="padding:8px 20px;border-radius:8px;background:var(--panel-2);color:var(--ink);font-size:13px;font-weight:700;border:1px solid var(--border);">إلغاء</button>
+      </div>
+    `;
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    function cleanup(val){ document.body.removeChild(overlay); resolve(val); }
+    box.querySelector('#confirm-yes').onclick = ()=>cleanup(true);
+    box.querySelector('#confirm-no').onclick = ()=>cleanup(false);
+    overlay.addEventListener('click', (e)=>{ if(e.target===overlay) cleanup(false); });
+  });
+}
+
+function defaultProjectMeta(){
+  return {client:'', consultant:'', engineer:'', drawingNo:'', revision:'A'};
+}
+// Old projects saved before this feature won't have `meta` — this keeps every reader safe.
+function projectMeta(project){
+  return Object.assign(defaultProjectMeta(), project.meta||{});
+}
+
+// A panel is "orphaned" if it's marked as a sub-panel but the panel it's supposed to feed
+// from doesn't exist anymore (e.g. that parent was deleted/recreated with a new id, or the
+// project JSON was hand-edited). Without this check, buildProjectTreeSvg silently treats it
+// as an independent root with its own duplicate transformer — which looks like a random
+// disconnected load floating in the diagram, with no obvious cause.
+function findOrphanedPanels(project){
+  const byId = Object.fromEntries((project.panels||[]).map(p=>[p.id,p]));
+  return (project.panels||[]).filter(p => p.sourceType==='sub' && p.parentPanelId && !byId[p.parentPanelId]);
+}
+
+async function fixOrphanedPanel(panel, action){
+  if(action==='detach'){
+    // Turn it into its own clearly-intentional independent main panel instead of an accidental one.
+    panel.sourceType = 'main';
+    panel.parentPanelId = null;
+  }
+  await saveProject(State.currentProject);
+  renderMain();
+}
+
+async function editProjectMeta(project){
+  const m = projectMeta(project);
+  const result = await showMultiFieldDialog('بيانات المشروع (لغلاف المخططات والتقارير)', [
+    {key:'client', label:'الجهة المالكة / العميل', value:m.client},
+    {key:'consultant', label:'الاستشاري / المكتب الهندسي', value:m.consultant},
+    {key:'engineer', label:'المهندس المسؤول', value:m.engineer},
+    {key:'drawingNo', label:'رقم الرسم', value:m.drawingNo},
+    {key:'revision', label:'رقم المراجعة (Rev)', value:m.revision},
+  ]);
+  if(!result) return;
+  project.meta = result;
+  await saveProject(project);
+  renderMain();
+}
+
+function showMultiFieldDialog(title, fields){
+  return new Promise(resolve=>{
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;';
+    const box = document.createElement('div');
+    box.style.cssText = 'background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:20px;max-width:400px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.5);max-height:90vh;overflow-y:auto;';
+    box.innerHTML = `
+      <h3 style="color:var(--ink);font-weight:800;margin:0 0 14px;font-size:15px;">${escapeHtml(title)}</h3>
+      ${fields.map((f,i)=>`
+        <label style="display:block;font-size:11px;color:var(--ink-soft);margin-bottom:4px;">${escapeHtml(f.label)}</label>
+        <input data-mf="${i}" type="text" value="${escapeAttr(f.value||'')}" style="width:100%;border:1px solid var(--border);background:var(--panel-2);color:var(--ink);border-radius:8px;padding:8px 10px;font-size:13px;margin-bottom:12px;box-sizing:border-box;">
+      `).join('')}
+      <div style="display:flex;gap:8px;justify-content:flex-start;margin-top:4px;">
+        <button id="mf-ok" style="padding:8px 16px;border-radius:8px;background:var(--copper);color:#08161A;font-size:13px;font-weight:700;border:none;">حفظ</button>
+        <button id="mf-cancel" style="padding:8px 16px;border-radius:8px;background:var(--panel-2);color:var(--ink);font-size:13px;font-weight:700;border:1px solid var(--border);">إلغاء</button>
+      </div>
+    `;
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    function cleanup(val){ document.body.removeChild(overlay); resolve(val); }
+    box.querySelector('#mf-cancel').onclick = ()=>cleanup(null);
+    box.querySelector('#mf-ok').onclick = ()=>{
+      const out = {};
+      fields.forEach((f,i)=>{ out[f.key] = box.querySelector(`[data-mf="${i}"]`).value.trim(); });
+      cleanup(out);
+    };
+    overlay.addEventListener('click', (e)=>{ if(e.target===overlay) cleanup(null); });
+  });
+}
+
+/* ============================== RENDER: PANELS LIST ============================== */
+
+function orderedPanelsWithDepth(panels){
+  const byParent = {};
+  panels.forEach(p=>{
+    const key = (p.parentPanelId && panels.some(x=>x.id===p.parentPanelId)) ? p.parentPanelId : '__root__';
+    (byParent[key] = byParent[key]||[]).push(p);
+  });
+  const result = [];
+  function walk(parentKey, depth){
+    (byParent[parentKey]||[]).forEach(p=>{
+      result.push({panel:p, depth});
+      walk(p.id, depth+1);
+    });
+  }
+  walk('__root__', 0);
+  return result;
+}
+
+function renderPanelsList(){
+  const list = document.getElementById('panels-list');
+  list.innerHTML = '';
+  if(!State.currentProject) return;
+  orderedPanelsWithDepth(State.currentProject.panels).forEach(({panel, depth})=>{
+    const row = document.createElement('div');
+    const active = State.currentPanelId === panel.id;
+    row.className = 'flex items-center gap-1';
+    if(depth>0) row.style.paddingRight = (depth*14)+'px';
+    const btn = document.createElement('button');
+    btn.className = 'flex-1 text-right px-2 py-1.5 rounded-md text-xs truncate flex items-center gap-1 ' +
+      (active ? 'bg-[rgba(193,120,23,.14)] text-[var(--copper)] font-bold' : 'hover:bg-[var(--panel-2)]');
+    btn.innerHTML = (depth>0 ? '<span style="opacity:.5">↳</span> ' : '') + escapeHtml(panel.name);
+    btn.onclick = ()=>{ State.currentPanelId = panel.id; State.viewMode = 'panel'; renderPanelsList(); renderMain(); };
+    row.appendChild(btn);
+
+    const del = document.createElement('button');
+    del.className = 'text-[10px] text-[var(--warn)] px-1';
+    del.textContent = '✕';
+    del.title = 'حذف اللوحة';
+    del.onclick = async (e)=>{
+      e.stopPropagation();
+      if(!(await confirmDialog('حذف اللوحة', 'هل تريد حذف هذه اللوحة؟'))) return;
+      State.currentProject.panels.forEach(p=>{ if(p.parentPanelId===panel.id) p.parentPanelId = null; });
+      State.currentProject.panels = State.currentProject.panels.filter(p=>p.id!==panel.id);
+      if(State.currentPanelId===panel.id){
+        State.currentPanelId = State.currentProject.panels[0] ? State.currentProject.panels[0].id : null;
+      }
+      await saveProject(State.currentProject);
+      renderPanelsList(); renderMain();
+    };
+    row.appendChild(del);
+    list.appendChild(row);
+  });
+}
+
+document.getElementById('btn-new-panel').onclick = async ()=>{
+  if(!State.currentProject) return;
+  const name = await promptText('لوحة جديدة', 'مثال: لوحة مضخات الرفع');
+  if(!name) return;
+  const panel = defaultPanel(name);
+  State.currentProject.panels.push(panel);
+  State.currentPanelId = panel.id;
+  State.viewMode = 'panel';
+  await saveProject(State.currentProject);
+  renderPanelsList();
+  renderMain();
+};
+
+document.getElementById('btn-project-overview').onclick = ()=>{
+  if(!State.currentProject) return;
+  State.viewMode = 'project-sld';
+  renderMain();
+};
+
+/* ============================== RENDER: MAIN AREA ============================== */
+
+function currentPanel(){
+  if(!State.currentProject) return null;
+  return State.currentProject.panels.find(p=>p.id===State.currentPanelId) || null;
+}
+
+function renderMain(){
+  try {
+    renderMainInner();
+  } catch(err){
+    console.error('renderMain error:', err);
+    const main = document.getElementById('main-area');
+    if(main){
+      main.innerHTML = `
+        <div class="p-6 max-w-xl mx-auto text-center">
+          <div class="rounded-xl border border-[var(--warn)] p-5" style="background:rgba(211,47,47,.06)">
+            <p class="text-2xl mb-2">⚠️</p>
+            <h3 class="font-bold text-[var(--warn)] mb-2">حصل خطأ غير متوقع أثناء عرض الشاشة</h3>
+            <p class="text-xs text-[var(--ink-soft)] mb-4">البيانات لسه محفوظة وآمنة. جرب واحدة من دول:</p>
+            <div class="flex flex-col gap-2">
+              <button id="err-retry" class="btn-copper rounded-lg px-4 py-2 text-xs">🔄 إعادة المحاولة</button>
+              <button id="err-go-loads" class="btn-navy rounded-lg px-4 py-2 text-xs">↩ الرجوع لإعدادات اللوحة</button>
+            </div>
+            <p class="text-[10px] text-[var(--ink-soft)] mt-4 mono" style="direction:ltr; text-align:left; word-break:break-all;">${escapeHtml(err.message||String(err))}</p>
+          </div>
+        </div>
+      `;
+      const retryBtn = document.getElementById('err-retry');
+      if(retryBtn) retryBtn.onclick = ()=> renderMain();
+      const gotoBtn = document.getElementById('err-go-loads');
+      if(gotoBtn) gotoBtn.onclick = ()=>{ State.viewMode='panel'; State.activeTab='loads'; renderMain(); };
+    }
+  }
+}
+
+function renderMainInner(){
+  const main = document.getElementById('main-area');
+
+  if(State.viewMode==='project-sld' && State.currentProject){
+    renderProjectOverview(main);
+    return;
+  }
+
+  const panel = currentPanel();
+  if(!State.currentProject || !panel){
+    main.innerHTML = '<div class="flex items-center justify-center h-full text-[var(--ink-soft)] text-sm">اختر أو أنشئ لوحة للبدء</div>';
+    return;
+  }
+
+  main.innerHTML = `
+    <div class="p-5 max-w-6xl mx-auto">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-xl font-extrabold text-[var(--navy)]">${escapeHtml(State.currentProject.name)}</h2>
+          <p class="text-xs text-[var(--ink-soft)] mono">اللوحة: ${escapeHtml(panel.name)}</p>
+        </div>
+        <button id="btn-edit-project-meta" class="rounded-lg px-3 py-2 text-sm border border-[var(--border)] text-[var(--ink-soft)] hover:text-[var(--copper-dark)] hover:border-[var(--copper)]">ℹ️ بيانات المشروع (للغلاف والتقارير)</button>
+      </div>
+
+      <div class="flex gap-5 border-b border-[var(--border)] mb-4 text-sm">
+        <button class="tab-btn py-2 px-1 text-base ${State.activeTab==='loads'?'active':''}" data-tab="loads">⚙️ إعدادات اللوحة والأحمال</button>
+        <button class="tab-btn py-2 px-1 text-base ${State.activeTab==='results'?'active':''}" data-tab="results">📊 نتائج الحسابات</button>
+        <button class="tab-btn py-2 px-1 text-base ${State.activeTab==='sld'?'active':''}" data-tab="sld">🗺️ مخطط اللوحة (SLD)</button>
+        <button class="tab-btn py-2 px-1 text-base ${State.activeTab==='methodology'?'active':''}" data-tab="methodology">📘 طريقة الحساب والمعادلات</button>
+      </div>
+
+      <div id="tab-content"></div>
+    </div>
+  `;
+
+  main.querySelectorAll('.tab-btn').forEach(b=>{
+    b.onclick = ()=>{ State.activeTab = b.dataset.tab; State.viewMode='panel'; renderMain(); };
+  });
+  document.getElementById('btn-edit-project-meta').onclick = ()=> editProjectMeta(State.currentProject);
+
+  const content = document.getElementById('tab-content');
+  if(State.activeTab==='loads') renderLoadsTab(content, panel);
+  else if(State.activeTab==='results') renderResultsTab(content, panel);
+  else if(State.activeTab==='sld') renderSldTab(content, panel);
+  else renderMethodologyTab(content, panel);
+}
+
+/* ---- Tab: Methodology & formulas reference ---- */
+
+function renderMethodologyTab(container, panel){
+  const bodyHtml = buildMethodologyHtml();
+  container.innerHTML = `
+    <style>
+      .methodology-inline h2.m-h{font-size:15px; color:var(--navy); margin:20px 0 8px; border-bottom:2px solid var(--navy); padding-bottom:4px;}
+      .methodology-inline h2.m-h:first-child{margin-top:0;}
+      .methodology-inline .m-eq{font-family:'Consolas','Roboto Mono',monospace; font-size:12.5px; margin:4px 0; direction:ltr; text-align:left; unicode-bidi:embed; background:var(--panel-2); border-radius:6px; padding:6px 10px; color:var(--ink);}
+      .methodology-inline .m-note{font-size:11.5px; color:var(--ink-soft); margin:2px 0 10px;}
+      .methodology-inline .m-ref{font-size:10.5px; color:var(--ink-soft); opacity:.8; font-style:italic; margin:0 0 10px;}
+      .methodology-inline table.m-t{width:100%; border-collapse:collapse; margin:8px 0 14px; font-size:12px;}
+      .methodology-inline table.m-t th, .methodology-inline table.m-t td{border:1px solid var(--border); padding:5px 8px; text-align:center; color:var(--ink);}
+      .methodology-inline table.m-t th{background:var(--navy); color:white;}
+      .methodology-inline .m-warn{border:1px solid var(--warn); background:rgba(211,47,47,.08); color:var(--warn); border-radius:8px; padding:10px 14px; font-size:12px; font-weight:700; margin-top:18px;}
+    </style>
+    <div class="bg-[var(--panel)] rounded-xl border border-[var(--border)] p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-bold text-sm text-[var(--navy)]">طريقة الحساب والمعادلات المستخدمة في البرنامج</h3>
+        <button id="btn-print-methodology" class="btn-navy rounded-lg px-3 py-2 text-sm">🖨 طباعة / حفظ PDF</button>
+      </div>
+      <div class="methodology-inline">${bodyHtml}</div>
+    </div>
+  `;
+  document.getElementById('btn-print-methodology').onclick = ()=>{
+    openPrintWindow('طريقة الحساب والمعادلات', bodyHtml, methodologyExtraCss());
+  };
+}
+
+function methodologyExtraCss(){
+  return `
+    h2.m-h{font-size:16px; color:#0B2545; margin:22px 0 8px; border-bottom:2px solid #0B2545; padding-bottom:4px;}
+    h2.m-h:first-child{margin-top:0;}
+    .m-eq{font-family:'Consolas','Roboto Mono',monospace; font-size:12.5px; margin:4px 0; direction:ltr; text-align:left; unicode-bidi:embed; background:#F7F5EF; border-radius:6px; padding:6px 10px;}
+    .m-note{font-size:11.5px; color:#4A5A75; margin:2px 0 10px;}
+    .m-ref{font-size:10.5px; color:#8A97AB; font-style:italic; margin:0 0 10px;}
+    table.m-t{width:100%; border-collapse:collapse; margin:8px 0 14px; font-size:12px;}
+    table.m-t th, table.m-t td{border:1px solid #ccc; padding:5px 8px; text-align:center;}
+    table.m-t th{background:#0B2545; color:white;}
+    .m-warn{border:1px solid #B3261E; background:rgba(179,38,30,.06); color:#B3261E; border-radius:8px; padding:10px 14px; font-size:12px; font-weight:700; margin-top:18px;}
+  `;
+}
+
+// One place documenting every formula, correction factor, and its code reference — the
+// content of this page must stay in sync with the actual calc functions (calcFLC, calcLoad,
+// pickCableAndBreaker, calcPanelSummary) since it's meant to be checkable against them.
+function buildMethodologyHtml(){
+  return `
+    <h2 class="m-h">1) تيار التشغيل الكامل (FLC)</h2>
+    <div class="m-eq">FLC = P / (√3 × V × PF × η) &nbsp; [ثلاثي الأطوار]</div>
+    <div class="m-eq">FLC = P / (V × PF × η) &nbsp; [أحادي الطور]</div>
+    <p class="m-note">η (الكفاءة) تُستخدم فقط مع المحركات — لأنها تمثل تحويل القدرة الميكانيكية الناتجة إلى قدرة كهربية داخلة. الإنارة والأحمال العامة والشيلر (عند إدخاله كـ kW مباشر أو محسوب من الطن التبريدي) تمثل بالفعل قدرة كهربية داخلة، فلا يُقسّم على كفاءة إضافية (η = 1).</p>
+
+    <h2 class="m-h">2) حمل الشيلر (وحدات التبريد) — تحويل الطن التبريدي</h2>
+    <div class="m-eq">P(kW) = الطن التبريدي (TR) × معامل الأداء (kW/TR)</div>
+    <table class="m-t">
+      <thead><tr><th>نوع الشيلر</th><th>معامل الأداء الإرشادي (kW/TR)</th></tr></thead>
+      <tbody>
+        <tr><td>هوائي التبريد (Air-cooled)</td><td>0.9 – 1.2</td></tr>
+        <tr><td>مائي التبريد (Water-cooled, screw/centrifugal)</td><td>0.55 – 0.75</td></tr>
+      </tbody>
+    </table>
+    <p class="m-ref">القيم إرشادية فقط (ASHRAE / بيانات مصنّعين شائعة) — يجب دائماً استخدام معامل الأداء الفعلي من كتالوج الوحدة المعتمدة قبل الاعتماد النهائي على أي تصميم.</p>
+    <p class="m-note">بعد التحويل، تُعامل قدرة الشيلر (P) بنفس معادلة FLC أعلاه (بدون كفاءة إضافية)، وتيار إقلاعها يُحسب بنفس منطق المحركات (بند 4) نظراً لطبيعة ضاغطها.</p>
+
+    <h2 class="m-h">3) تيار التصميم (Ib) — عامل الطلب (Demand Factor)</h2>
+    <div class="m-eq">Ib = FLC × عامل الطلب (Demand Factor / Ku)</div>
+    <p class="m-note">عامل الطلب يُطبَّق على مستوى <b>كل حمل على حدة</b>، ويعبّر عن نسبة الحمل الفعلي المتوقع تشغيله من الحمل الاسمي الكامل (مثال: مضخة احتياطية بالكامل = 1.0، حمل متقطع التشغيل قد يكون أقل). يُدخل يدوياً لكل حمل حسب طبيعة تشغيله الفعلية.</p>
+    <p class="m-ref">IEC 60364-1، البند 311 — أساس حساب الحمل التصميمي</p>
+
+    <h2 class="m-h">4) تيار الإقلاع (للمحركات والشيلرات)</h2>
+    <div class="m-eq">Istart = FLC × معامل البدء (حسب طريقة التشغيل)</div>
+    <table class="m-t">
+      <thead><tr><th>طريقة التشغيل</th><th>معامل بدء المحرك العام</th><th>معامل بدء ضاغط الشيلر</th></tr></thead>
+      <tbody>
+        <tr><td>مباشر (DOL)</td><td>6.5</td><td>6.0</td></tr>
+        <tr><td>نجمة–مثلث (SD)</td><td>2.2</td><td>2.4</td></tr>
+        <tr><td>مشغل ناعم (Soft Starter)</td><td>3.5</td><td>3.0</td></tr>
+        <tr><td>محول تردد (VFD)</td><td>1.2</td><td>1.2</td></tr>
+      </tbody>
+    </table>
+    <p class="m-ref">قيم تقريبية شائعة الاستخدام في التصميم المبدئي — يجب مراجعتها مقابل قيمة LRA/الإقلاع الفعلية من كتالوج المحرك أو الضاغط.</p>
+
+    <h2 class="m-h">5) اختيار مقطع الكابل (Iz)</h2>
+    <div class="m-eq">Iz = Io × Ca × Cg × معامل الموصل × معامل طريقة التمديد</div>
+    <table class="m-t">
+      <thead><tr><th>الرمز</th><th>المعنى</th><th>المرجع</th></tr></thead>
+      <tbody>
+        <tr><td>Io</td><td>الأمبير القياسي الأساسي (نحاس، 30°م، 3 موصلات محملة)</td><td>IEC 60364-5-52، جدول B.52.4</td></tr>
+        <tr><td>Ca</td><td>معامل تصحيح درجة حرارة المحيط</td><td>IEC 60364-5-52، جدول B.52.14</td></tr>
+        <tr><td>Cg</td><td>معامل تصحيح التجميع (عدد الدوائر المتجاورة)</td><td>IEC 60364-5-52، جدول B.52.17/21</td></tr>
+        <tr><td>معامل الموصل</td><td>نحاس = 1.00، ألومنيوم ≈ 0.78</td><td>مرجع نسبي شائع بين المواد</td></tr>
+      </tbody>
+    </table>
+    <p class="m-note">شرط اختيار الكابل: Iz ≥ In (أقرب مقطع يحقق ذلك يتم اختياره).</p>
+
+    <h2 class="m-h">6) اختيار القاطع (In)</h2>
+    <div class="m-eq">Ib ≤ In ≤ Iz</div>
+    <p class="m-ref">IEC 60364-4-43، البند 433.1 — شرط حماية الكابل من الحمل الزائد</p>
+
+    <h2 class="m-h">7) هبوط الجهد (Voltage Drop)</h2>
+    <div class="m-eq">ΔV = (mV/A/m من الجدول × معامل الموصل) × Ib × الطول(م) / 1000 &nbsp;[× 1.15 للطور الواحد]</div>
+    <div class="m-eq">ΔV% = ΔV / V × 100</div>
+    <p class="m-note">الحد الموصى به: 5% كحد أقصى تراكمي للأحمال العامة (بعض الأكواد المحلية تشترط 4% للإنارة تحديداً — يُنصح مراجعة الكود المحلي المُعتمد للمشروع).</p>
+    <p class="m-ref">IEC 60364-5-52، الملحق G (توصية غير إلزامية)</p>
+
+    <h2 class="m-h">8) القاطع والكابل الرئيسي للوحة — عامل التشتت/التنويع (Diversity Factor)</h2>
+    <div class="m-eq">ΣIb = مجموع تيارات تصميم كل الأحمال + اللوحات الفرعية المتصلة</div>
+    <div class="m-eq">Iincomer = ΣIb × عامل التنويع (Diversity Factor / Ks)</div>
+    <p class="m-note"><b>الفرق بين عامل الطلب وعامل التنويع:</b> عامل الطلب (بند 3) يُطبَّق على <b>كل حمل بمفرده</b> ليعكس نسبة تشغيله الفعلية. أما عامل التنويع فيُطبَّق مرة واحدة على <b>مجموع كل الأحمال معاً عند القاطع الرئيسي للوحة</b>، ويعكس حقيقة أن كل الأحمال نادراً ما تعمل بأقصى حمل تصميمي لها في نفس اللحظة. القاطع والكابل الرئيسي يُختاران بنفس معايير البندين 5 و6 أعلاه، لكن بتيار التصميم الكلي بعد عامل التنويع.</p>
+    <p class="m-ref">مفهوم Diversity/Coincidence Factor — IEC 60439 / ممارسات التصميم القياسية لتوزيع اللوحات</p>
+
+    <h2 class="m-h">9) مستوى قصر الدائرة التقريبي (Isc)</h2>
+    <div class="m-eq">Isc = (kVA × 1000) / (√3 × V × %Z)</div>
+    <p class="m-note">تقريب مبسّط يعتمد على قدرة المحول ونسبة ممانعته %Z فقط، ولا يشمل ممانعة الشبكة العلوية (Utility) أو الكابلات بين المحول واللوحة.</p>
+    <p class="m-ref">منهج مبسّط متوافق مع فكرة IEC 60909 — للاستخدام الأولي فقط، وليس بديلاً عن دراسة قصر دائرة كاملة قبل اختيار قدرة قطع القواطع (Icu/Ics)</p>
+
+    <h2 class="m-h">10) تحمّل الكابل الحراري للقصر (S²k² ≥ I²t)</h2>
+    <div class="m-eq">أقل مقطع مسموح = (تيار القصر (A) × √زمن الفصل(ث)) / k</div>
+    <table class="m-t">
+      <thead><tr><th>الموصل</th><th>k (عزل PVC)</th><th>k (عزل XLPE)</th></tr></thead>
+      <tbody>
+        <tr><td>نحاس</td><td>115</td><td>143</td></tr>
+        <tr><td>ألومنيوم</td><td>76</td><td>94</td></tr>
+      </tbody>
+    </table>
+    <p class="m-note">فحص مستقل عن اختيار الكابل بالحمل الأمبيري العادي (بند 5) — كابل يكفي حمله المستمر ممكن برضه "يتحرق" حرارياً من تيار قصر لم يُصمَّم لتحمّله خلال زمن فصل القاطع الفعلي.</p>
+    <p class="m-ref">IEC 60364-5-54، جدول 43A — زمن الفصل الافتراضي في هذا البرنامج قابل للتعديل لكل لوحة (القيمة الشائعة للقواطع سريعة الفصل ≈ 0.1 ثانية)</p>
+
+    <h2 class="m-h">11) التنسيق/الانتقائية بين القواطع (Discrimination)</h2>
+    <p class="m-note">عند وجود أكثر من دائرة على نفس اللوحة، يُنصح أن يكون تصنيف القاطع الرئيسي أكبر من أي قاطع فرعي بنسبة لا تقل عن 1.6:1 تقريباً — لضمان أن عطلاً في دائرة واحدة يفصل قاطعها فقط، دون أن يفصل القاطع الرئيسي للوحة كاملة.</p>
+    <p class="m-ref">قاعدة إرشادية مبسّطة بغياب جدول انتقائية معتمد من المُصنّع — التنسيق المضمون يحتاج مراجعة منحنيات الفصل الفعلية (Time-Current Curves) للقواطع المختارة</p>
+
+    <div class="m-warn">⚠ هذه الحسابات مُعدّة لأغراض التصميم المبدئي والمراجعة الهندسية الأولية. القيم التقريبية (معاملات البدء، %Z، كتالوجات الشيلر) يجب التحقق منها دائماً مقابل بيانات المُصنّع الفعلية وكود المشروع المعتمد قبل الاعتماد النهائي في التنفيذ.</div>
+  `;
+}
+
+/* ---- Tab: Loads & panel settings ---- */
+
+function panelOptionsExcluding(panel){
+  if(!State.currentProject) return [];
+  const all = State.currentProject.panels;
+  const excluded = new Set([panel.id]);
+  let changed = true;
+  while(changed){
+    changed = false;
+    all.forEach(p=>{
+      if(p.parentPanelId && excluded.has(p.parentPanelId) && !excluded.has(p.id)){
+        excluded.add(p.id); changed = true;
+      }
+    });
+  }
+  return all.filter(p=>!excluded.has(p.id));
+}
+
+function renderLoadsTab(container, panel){
+  container.innerHTML = `
+    <div class="bg-[var(--panel)] rounded-xl border border-[var(--border)] p-4 mb-5">
+      <h3 class="font-bold text-sm mb-3 text-[var(--navy)]">بيانات اللوحة</h3>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="field"><label title="اسم اللوحة كما سيظهر في المخططات والتقارير">اسم اللوحة</label><input id="f-name" type="text" value="${escapeAttr(panel.name)}"></div>
+        <div class="field"><label title="جهد التشغيل للوحة بالفولت (مثال: 400 للوحات التوزيع العادية، أو جهد متوسط مثل 11000/33000 للوحات الجهد المتوسط)">الجهد (V)</label><input id="f-voltage" type="number" value="${panel.voltage}"></div>
+      </div>
+
+      <div class="mt-3 pt-3 border-t border-[var(--border)]">
+        <div class="field"><label title="اختر 'مصدر رئيسي' لو اللوحة متغذية مباشرة من محول/مرفق كهرباء، أو 'لوحة فرعية' لو متغذية من لوحة تانية في نفس المشروع — الاختيار ده يحدد شكل الاتصال في المخطط العام">مصدر تغذية اللوحة</label>
+          <select id="f-sourcetype">
+            <option value="main" ${panel.sourceType!=='sub'?'selected':''}>مصدر رئيسي (محول / مرفق كهرباء)</option>
+            <option value="sub" ${panel.sourceType==='sub'?'selected':''}>لوحة تانية في نفس المشروع (لوحة فرعية)</option>
+          </select>
+        </div>
+        <div id="parent-panel-field" class="field mt-2" style="display:${panel.sourceType==='sub'?'block':'none'}">
+          <label title="اللوحة الأم التي تغذي هذه اللوحة الفرعية — يظهر خط اتصال بينهما في المخطط العام تلقائياً">تتغذى من لوحة:</label>
+          ${panelOptionsExcluding(panel).length===0
+            ? '<p class="text-[11px] text-[var(--warn)]">لا توجد لوحات تانية في المشروع بعد لتختار منها — أضف لوحة عمومية الأول.</p>'
+            : `<select id="f-parentpanel">${panelOptionsExcluding(panel).map(p=>`<option value="${p.id}" ${panel.parentPanelId===p.id?'selected':''}>${escapeHtml(p.name)}</option>`).join('')}</select>`}
+        </div>
+      </div>
+
+      <button id="btn-toggle-advanced" class="text-[var(--copper)] text-xs font-bold mt-3">⚙ إعدادات متقدمة (اختياري) ▾</button>
+      <div id="advanced-settings" style="display:none" class="mt-3 pt-3 border-t border-[var(--border)]">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div class="field"><label title="نوع عزل الكابلات — يؤثر على الحمل الأمبيري المسموح به وحدود الحرارة القصوى للموصل (PVC حتى 70°م، XLPE حتى 90°م)">نوع العزل</label>
+            <select id="f-insulation">
+              <option value="pvc" ${panel.insulation==='pvc'?'selected':''}>PVC (70°C)</option>
+              <option value="xlpe" ${panel.insulation==='xlpe'?'selected':''}>XLPE (90°C)</option>
+            </select>
+          </div>
+          <div class="field"><label title="مادة موصل الكابل — الألومنيوم أرخص لكن يحتاج مقطع أكبر (قدرة توصيل أقل بحوالي 22% من النحاس لنفس المقطع)">نوع الموصل</label>
+            <select id="f-conductor">
+              <option value="copper" ${panel.conductor==='copper'?'selected':''}>نحاس (Copper)</option>
+              <option value="aluminum" ${panel.conductor==='aluminum'?'selected':''}>ألومنيوم (Aluminum)</option>
+            </select>
+          </div>
+          <div class="field"><label title="طريقة تمديد الكابل الفعلية في الموقع — تحدد أي عمود من جدول IEC 60364-5-52 يُستخدم لقراءة الحمل الأمبيري الأساسي للكابل">طريقة التمديد (IEC 60364-5-52)</label>
+            <select id="f-install">
+              ${Object.entries(INSTALL_METHOD_GROUPS).map(([gKey,gLabel])=>`
+                <optgroup label="${gLabel}">
+                  ${Object.entries(INSTALL_METHODS).filter(([,m])=>m.group===gKey).map(([mKey,m])=>`
+                    <option value="${mKey}" ${panel.installMethod===mKey?'selected':''}>${m.label}</option>
+                  `).join('')}
+                </optgroup>
+              `).join('')}
+            </select>
+          </div>
+          <div class="field"><label title="درجة حرارة الهواء المحيط بالكابل — كلما زادت عن 30°م (المرجع القياسي) قلّت قدرة الكابل على تحمل التيار (معامل Ca)">حرارة المحيط (°C)</label><input id="f-temp" type="number" value="${panel.ambientTemp}"></div>
+          <div class="field"><label title="عدد الدوائر/الكابلات المتجاورة في نفس المسار — كلما زاد العدد قلّت قدرة كل كابل على التبريد الذاتي (معامل Cg)">عدد الدوائر المتجاورة</label><input id="f-group" type="number" min="1" max="8" value="${panel.groupingCircuits}"></div>
+          <div class="field"><label title="نسبة تشغيل كل الأحمال معاً في نفس اللحظة — عادة أقل من 1 لأن الأحمال نادراً ما تعمل بأقصى طاقتها في نفس الوقت. يُطبَّق مرة واحدة عند حساب القاطع الرئيسي (راجع تاب 'طريقة الحساب')">عامل التنويع للقاطع الرئيسي</label><input id="f-diversity" type="number" step="0.05" value="${panel.diversityFactor}"></div>
+          <div class="field"><label title="طول كابل التغذية من المصدر (المحول/اللوحة الأم) إلى هذه اللوحة — يُستخدم في حساب هبوط الجهد على القاطع الرئيسي">طول كابل التغذية الرئيسي (م)</label><input id="f-incomerlen" type="number" value="${panel.incomerCableLength}"></div>
+          <div class="field" id="f-kva-field">
+            <label title="سعة المحول المغذي لهذه اللوحة بالـ kVA — تُستخدم في حساب مستوى قصر الدائرة التقريبي (Isc). استخدم زر الاقتراح التلقائي لحساب سعة مناسبة من الأحمال الفعلية">سعة المحول (kVA)</label>
+            <div style="display:flex;gap:6px;">
+              <input id="f-kva" type="number" value="${panel.transformerKVA}" style="flex:1">
+              <button id="btn-suggest-kva" type="button" title="اقترح سعة المحول تلقائياً حسب الأحمال المتصلة" style="white-space:nowrap;padding:0 8px;border-radius:6px;border:1px solid var(--copper);color:var(--copper-dark);font-size:.85rem;font-weight:700;background:white;">⚡ اقتراح تلقائي</button>
+            </div>
+            <p id="kva-hint" class="text-[10px] mt-1"></p>
+          </div>
+          <div class="field" id="f-z-field"><label title="نسبة ممانعة المحول (Impedance %) من لوحة بيانات المحول — كلما قلّت زاد مستوى قصر الدائرة المحتمل عند اللوحة">%Z للمحول</label><input id="f-z" type="number" step="0.1" value="${panel.transformerZ}"></div>
+          <div class="field"><label title="لو عندك قيمة قصر دائرة معتمدة من دراسة سابقة أو من المرفق، أدخلها هنا مباشرة بدل الاعتماد على التقريب المحسوب من kVA و%Z">أو Isc مباشرة (kA)</label><input id="f-iscoverride" type="number" step="0.1" value="${panel.upstreamIscOverrideKA!=null ? panel.upstreamIscOverrideKA : ''}" placeholder="اختياري"></div>
+          <div class="field"><label title="مجموعة توصيل المحول (Vector Group) — تظهر على المخطط بجانب رمز المحول، حسب بيانات المحول الفعلي من الكتالوج">مجموعة توصيل المحول (Vector Group)</label><input id="f-vectorgroup" type="text" value="${escapeAttr(panel.vectorGroup||'')}" placeholder="مثال: Dyn11"></div>
+        </div>
+        ${panel.sourceType==='sub' ? '<p class="text-[10px] text-[var(--ink-soft)] mt-2">اللوحة دي فرعية، فبيانات المحول مش مستخدمة إلا لو حددت Isc يدوياً.</p>' : ''}
+
+        <h4 class="text-xs font-bold text-[var(--navy)] mt-4 mb-2">البار الرئيسي والقاطع الرئيسي</h4>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div class="field"><label title="تصنيف تيار البار الرئيسي (A) — لازم يكون أكبر من أو يساوي القاطع الرئيسي. اتركه فارغاً للاقتراح التلقائي">تصنيف البار الرئيسي (A)</label>
+            <input id="f-busbar-a" type="number" value="${panel.busbarRatingA!=null ? panel.busbarRatingA : ''}" placeholder="تلقائي">
+          </div>
+          <div class="field"><label title="قدرة تحمل البار للقصر اللحظي (kA) — لازم تكون أكبر من أو تساوي مستوى قصر الدائرة المحسوب. اتركها فارغة للاقتراح التلقائي">تحمّل البار للقصر (kA)</label>
+            <input id="f-busbar-ka" type="number" step="0.1" value="${panel.busbarBracingKA!=null ? panel.busbarBracingKA : ''}" placeholder="تلقائي">
+          </div>
+          <div class="field"><label title="فئة القاطع الرئيسي — 'تلقائي' يقترح النوع المناسب حسب الأمبير المحسوب">نوع القاطع الرئيسي</label>
+            <select id="f-incomer-breaker-type">
+              <option value="auto" ${(!panel.incomerBreakerType||panel.incomerBreakerType==='auto')?'selected':''}>تلقائي حسب الأمبير</option>
+              <option value="MCB" ${panel.incomerBreakerType==='MCB'?'selected':''}>${BREAKER_TYPE_LABEL.MCB}</option>
+              <option value="MCCB" ${panel.incomerBreakerType==='MCCB'?'selected':''}>${BREAKER_TYPE_LABEL.MCCB}</option>
+              <option value="ACB" ${panel.incomerBreakerType==='ACB'?'selected':''}>${BREAKER_TYPE_LABEL.ACB}</option>
+            </select>
+          </div>
+          <div class="field"><label title="قدرة قطع القاطع الرئيسي (Icu) — لازم تكون أكبر من أو تساوي مستوى قصر الدائرة عند هذه اللوحة">قدرة قطع القاطع الرئيسي (kA)</label>
+            <select id="f-incomer-icu">
+              <option value="">تلقائي (أعلى من مستوى القصر)</option>
+              ${STD_ICU_KA.map(k=>`<option value="${k}" ${panel.incomerBreakerIcu==k?'selected':''}>${k} kA</option>`).join('')}
+            </select>
+          </div>
+          <div class="field"><label title="الزمن المفترض لفصل القاطع عند حدوث قصر (ثانية) — يُستخدم في فحص تحمّل الكابل الحراري للقصر (S²k²≥I²t، IEC 60364-5-54). القيمة النموذجية للقواطع سريعة الفصل ≈ 0.1 ثانية">زمن فصل القاطع الافتراضي (ثانية)</label>
+            <input id="f-faultclear" type="number" step="0.01" value="${panel.faultClearTimeSec||0.1}">
+          </div>
+        </div>
+        <p id="busbar-hint" class="text-[10px] mt-2"></p>
+      </div>
+      <button id="btn-save-panel" class="btn-copper mt-4 rounded-lg px-4 py-2 text-xs">حفظ</button>
+    </div>
+
+    <div class="bg-[var(--panel)] rounded-xl border border-[var(--border)] p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-bold text-sm text-[var(--navy)]">🗂 جدول الكابلات والقواطع (Panel Schedule)</h3>
+        <button id="btn-print-schedule" class="btn-navy rounded-lg px-3 py-2 text-sm">🖨 طباعة / حفظ PDF</button>
+      </div>
+      <div id="schedule-holder" class="overflow-x-auto"></div>
+    </div>
+
+    <div class="bg-[var(--panel)] rounded-xl border border-[var(--border)] p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-bold text-sm text-[var(--navy)]">الأحمال (${panel.loads.length})</h3>
+        <button id="btn-add-load" class="btn-navy rounded-lg px-3 py-1.5 text-xs">+ إضافة حمل</button>
+      </div>
+      <div id="loads-cards" class="space-y-3"></div>
+      ${panel.loads.length===0 ? '<p class="text-xs text-[var(--ink-soft)] text-center py-6">لسه معملتش أي حمل. دوس "+ إضافة حمل" وابدأ.</p>' : ''}
+    </div>
+  `;
+  enhanceSelects(container);
+
+  document.getElementById('f-sourcetype').onchange = (e)=>{
+    document.getElementById('parent-panel-field').style.display = e.target.value==='sub' ? 'block' : 'none';
+  };
+
+  function updateKvaHint(){
+    const hintEl = document.getElementById('kva-hint');
+    const kvaInput = document.getElementById('f-kva');
+    if(!hintEl || !kvaInput) return;
+    const sugg = suggestTransformerKVA(panel);
+    const current = num(kvaInput.value, panel.transformerKVA);
+    let msg = `الحمل الكلي المتصل: ${sugg.totalConnectedKW} kW → السعة المقترحة: ${sugg.suggestedKVA} kVA (بهامش احتياطي)`;
+    if(current > sugg.suggestedKVA*1.8 || current < sugg.requiredKVA){
+      hintEl.style.color = 'var(--warn)';
+      msg += ' — ⚠ السعة المدخلة بعيدة عن المطلوب فعلياً، راجعها';
+    } else {
+      hintEl.style.color = 'var(--ink-soft)';
+    }
+    hintEl.textContent = msg;
+  }
+  updateKvaHint();
+  document.getElementById('f-kva').addEventListener('input', updateKvaHint);
+  document.getElementById('btn-suggest-kva').onclick = ()=>{
+    const sugg = suggestTransformerKVA(panel);
+    document.getElementById('f-kva').value = sugg.suggestedKVA;
+    updateKvaHint();
+  };
+
+  function updateBusbarHint(){
+    const hintEl = document.getElementById('busbar-hint');
+    if(!hintEl) return;
+    const summary = calcPanelSummary(panel);
+    let msg = `القاطع الرئيسي المحسوب: ${summary.incomerBreaker}A · مستوى القصر: ${summary.iscKA}kA — البار المقترح: ${summary.busbarRatingA}A/${summary.busbarBracingKA}kA · القاطع المقترح: ${BREAKER_TYPE_LABEL[summary.incomerBreakerType]} بقدرة قطع ${summary.incomerIcu}kA`;
+    if(!summary.busbarRatingOk || !summary.busbarBracingOk || !summary.incomerIcuOk){
+      hintEl.style.color = 'var(--warn)';
+      msg = '⚠ ' + msg + ' — القيم المدخلة يدوياً أقل من المطلوب فعلياً، راجعها';
+    } else {
+      hintEl.style.color = 'var(--ink-soft)';
+    }
+    hintEl.textContent = msg;
+  }
+  updateBusbarHint();
+  ['f-busbar-a','f-busbar-ka','f-incomer-breaker-type','f-incomer-icu','f-faultclear'].forEach(id=>{
+    document.getElementById(id).addEventListener('change', ()=>{
+      panel.busbarRatingA = document.getElementById('f-busbar-a').value ? num(document.getElementById('f-busbar-a').value, null) : null;
+      panel.busbarBracingKA = document.getElementById('f-busbar-ka').value ? num(document.getElementById('f-busbar-ka').value, null) : null;
+      panel.incomerBreakerType = document.getElementById('f-incomer-breaker-type').value;
+      panel.incomerBreakerIcu = document.getElementById('f-incomer-icu').value ? num(document.getElementById('f-incomer-icu').value, null) : null;
+      panel.faultClearTimeSec = num(document.getElementById('f-faultclear').value, 0.1);
+      updateBusbarHint();
+    });
+  });
+
+  document.getElementById('btn-toggle-advanced').onclick = ()=>{
+    const el = document.getElementById('advanced-settings');
+    const btn = document.getElementById('btn-toggle-advanced');
+    const show = el.style.display==='none';
+    el.style.display = show ? 'block' : 'none';
+    btn.textContent = show ? '⚙ إعدادات متقدمة (اختياري) ▴' : '⚙ إعدادات متقدمة (اختياري) ▾';
+  };
+
+  document.getElementById('btn-save-panel').onclick = async ()=>{
+    panel.name = document.getElementById('f-name').value || panel.name;
+    panel.voltage = num(document.getElementById('f-voltage').value, panel.voltage);
+    panel.sourceType = document.getElementById('f-sourcetype').value;
+    const parentSel = document.getElementById('f-parentpanel');
+    panel.parentPanelId = (panel.sourceType==='sub' && parentSel && parentSel.value) ? parentSel.value : null;
+    panel.insulation = document.getElementById('f-insulation').value;
+    panel.conductor = document.getElementById('f-conductor').value;
+    panel.installMethod = document.getElementById('f-install').value;
+    panel.ambientTemp = num(document.getElementById('f-temp').value, panel.ambientTemp);
+    panel.groupingCircuits = num(document.getElementById('f-group').value, panel.groupingCircuits);
+    panel.diversityFactor = num(document.getElementById('f-diversity').value, panel.diversityFactor);
+    panel.incomerCableLength = num(document.getElementById('f-incomerlen').value, panel.incomerCableLength);
+    panel.transformerKVA = num(document.getElementById('f-kva').value, panel.transformerKVA);
+    panel.transformerZ = num(document.getElementById('f-z').value, panel.transformerZ);
+    const iscOv = document.getElementById('f-iscoverride').value;
+    panel.upstreamIscOverrideKA = iscOv==='' ? null : num(iscOv, null);
+    panel.vectorGroup = document.getElementById('f-vectorgroup').value.trim();
+    panel.busbarRatingA = document.getElementById('f-busbar-a').value ? num(document.getElementById('f-busbar-a').value, null) : null;
+    panel.busbarBracingKA = document.getElementById('f-busbar-ka').value ? num(document.getElementById('f-busbar-ka').value, null) : null;
+    panel.incomerBreakerType = document.getElementById('f-incomer-breaker-type').value;
+    panel.incomerBreakerIcu = document.getElementById('f-incomer-icu').value ? num(document.getElementById('f-incomer-icu').value, null) : null;
+    panel.faultClearTimeSec = num(document.getElementById('f-faultclear').value, 0.1);
+    await saveProject(State.currentProject);
+    renderPanelsList();
+    renderMain();
+  };
+
+  document.getElementById('btn-add-load').onclick = async ()=>{
+    panel.loads.push(defaultLoad('حمل '+(panel.loads.length+1)));
+    await saveProject(State.currentProject);
+    renderLoadsTab(container, panel);
+  };
+
+  renderLoadsCards(panel);
+
+  const scheduleHtml = buildScheduleTableHtml(panel);
+  document.getElementById('schedule-holder').innerHTML = scheduleHtml;
+  document.getElementById('btn-print-schedule').onclick = ()=>{
+    openPrintWindow('جدول الكابلات والقواطع — ' + panel.name, buildScheduleTableHtml(panel), scheduleExtraCss());
+  };
+}
+
+// Builds the panel/cable schedule — the tabular deliverable every real electrical design
+// package includes alongside the SLD: every circuit's cable construction+size, breaker
+// type+rating+breaking-capacity, and a clear PASS/FAIL against the fault level, plus the
+// busbar's own rating/bracing check.
+function buildScheduleTableHtml(panel){
+  const summary = calcPanelSummary(panel);
+  const rows = summary.results.map(({load,r})=>`
+    <tr>
+      <td>${escapeHtml(load.name)}</td>
+      <td>${r.effKw} kW</td>
+      <td>${r.cableTypeLabel}${r.cableArmored?' 🛡':''}</td>
+      <td>${r.cableSize} مم²</td>
+      <td>${BREAKER_TYPE_LABEL[r.breakerType]}</td>
+      <td>${r.breaker} A</td>
+      <td class="${r.breakerIcuOk?'sch-ok':'sch-bad'}">${r.breakerIcu} kA ${r.breakerIcuOk?'✓':'✗'}</td>
+    </tr>`).join('');
+  const incomerRow = `
+    <tr class="sch-incomer">
+      <td>القاطع الرئيسي (Incomer)</td>
+      <td>${summary.totalConnectedKW} kW</td>
+      <td>—</td>
+      <td>${summary.incomerCableSize} مم²</td>
+      <td>${BREAKER_TYPE_LABEL[summary.incomerBreakerType]}</td>
+      <td>${summary.incomerBreaker} A</td>
+      <td class="${summary.incomerIcuOk?'sch-ok':'sch-bad'}">${summary.incomerIcu} kA ${summary.incomerIcuOk?'✓':'✗'}</td>
+    </tr>`;
+  const busbarRow = `
+    <tr class="sch-busbar">
+      <td colspan="2">البار الرئيسي (Main Busbar)</td>
+      <td colspan="2" class="${summary.busbarRatingOk?'sch-ok':'sch-bad'}">تصنيف ${summary.busbarRatingA} A ${summary.busbarRatingOk?'✓':'✗'}</td>
+      <td colspan="3" class="${summary.busbarBracingOk?'sch-ok':'sch-bad'}">تحمّل قصر ${summary.busbarBracingKA} kA ${summary.busbarBracingOk?'✓':'✗'}</td>
+    </tr>`;
+  return `
+    <style>
+      .sch-t{width:100%; border-collapse:collapse; font-size:12px;}
+      .sch-t th, .sch-t td{border:1px solid var(--border,#ccc); padding:6px 8px; text-align:center;}
+      .sch-t th{background:var(--navy,#0B2545); color:white;}
+      .sch-t tr.sch-incomer, .sch-t tr.sch-busbar{background:var(--panel-2,#F0F2F6); font-weight:700;}
+      .sch-ok{color:#1E7A34; font-weight:700;}
+      .sch-bad{color:#B3261E; font-weight:700;}
+    </style>
+    <table class="sch-t">
+      <thead><tr><th>الدائرة</th><th>الحمل</th><th>نوع الكابل</th><th>المقطع</th><th>نوع القاطع</th><th>التيار</th><th>قدرة القطع (Icu) مقابل Isc=${summary.iscKA}kA</th></tr></thead>
+      <tbody>${busbarRow}${incomerRow}${rows}</tbody>
+    </table>
+  `;
+}
+function scheduleExtraCss(){
+  return `
+    table.sch-t{width:100%; border-collapse:collapse; font-size:12px;}
+    table.sch-t th, table.sch-t td{border:1px solid #ccc; padding:6px 8px; text-align:center;}
+    table.sch-t th{background:#0B2545; color:white;}
+    table.sch-t tr.sch-incomer, table.sch-t tr.sch-busbar{background:#F0F2F6; font-weight:700;}
+    .sch-ok{color:#1E7A34; font-weight:700;}
+    .sch-bad{color:#B3261E; font-weight:700;}
+  `;
+}
+
+const LOAD_TYPE_LABEL = {motor:'محرك / مضخة', general:'حمل عام', lighting:'إنارة', chiller:'شيلر (وحدة تبريد)'};
+const LOAD_TYPE_ICON = {motor:'⚙', general:'🔌', lighting:'💡', chiller:'❄️'};
+const STARTMETHOD_LABEL = {DOL:'مباشر', SD:'نجمة-مثلث', SS:'مشغل ناعم', VFD:'VFD', NONE:'—'};
+// Sensible starting PF/efficiency per load type. Efficiency is only meaningful for motors
+// (see calcFLC) — kept here at 1 for other types just so the field always has a sane value.
+const LOAD_TYPE_DEFAULTS = {
+  motor:    {pf:0.85, eff:0.90},
+  general:  {pf:0.90, eff:1},
+  lighting: {pf:0.95, eff:1},
+  chiller:  {pf:0.88, eff:1},
+};
+
+function renderLoadsCards(panel){
+  const holder = document.getElementById('loads-cards');
+  holder.innerHTML = '';
+  panel.loads.forEach((load, idx)=>{
+    const card = document.createElement('div');
+    card.className = 'border border-[var(--border)] rounded-lg p-3';
+    card.innerHTML = `
+      <div class="flex items-center gap-2">
+        <span class="flex items-center justify-center rounded-full text-2xl" style="width:40px;height:40px;background:var(--panel-2);flex-shrink:0;">${LOAD_TYPE_ICON[load.type]}</span>
+        <input class="flex-1 border rounded px-2 py-1.5 text-sm font-bold" data-f="name" value="${escapeAttr(load.name)}">
+        <button class="text-[var(--warn)] font-bold px-2 text-xl" data-del="1" title="حذف هذا الحمل">✕</button>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
+        <div class="field"><label title="نوع الحمل يحدد كيفية حساب التيار: المحركات تُقسَّم على الكفاءة ولها تيار إقلاع، الإنارة والحمل العام لا">النوع</label>
+          <select data-f="type">
+            <option value="motor" ${load.type==='motor'?'selected':''}>⚙ محرك/مضخة</option>
+            <option value="general" ${load.type==='general'?'selected':''}>🔌 حمل عام</option>
+            <option value="lighting" ${load.type==='lighting'?'selected':''}>💡 إنارة</option>
+            <option value="chiller" ${load.type==='chiller'?'selected':''}>❄ شيلر (وحدة تبريد)</option>
+          </select>
+        </div>
+        <div class="field" data-kw-field style="display:${(load.type==='chiller'&&load.chillerInputMode==='tr')?'none':'block'}">
+          <label title="القدرة الكهربية الاسمية للحمل الواحد بالكيلوواط">القدرة (kW)</label><input type="number" step="0.1" data-f="kw" value="${load.kw}">
+        </div>
+        <div class="field"><label title="عدد الوحدات المتطابقة بنفس هذه المواصفات (كل وحدة تحصل على قاطع وكابل مستقل بنفس الحساب)">العدد</label><input type="number" min="1" data-f="qty" value="${load.qty}"></div>
+        <div class="field"><label title="التركيب الفعلي للكابل (عزل + تدريع) — يحدد جدول الحمل الأمبيري المستخدم لهذه الدائرة تحديداً، بغض النظر عن إعداد اللوحة العام">نوع الكابل</label>
+          <select data-f="cableType">
+            ${CABLE_TYPE_CATALOG.map(c=>`<option value="${c.id}" ${load.cableType===c.id?'selected':''}>${c.label}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+
+      ${load.type==='chiller' ? `
+      <div class="rounded-lg border border-[var(--border)] p-2 mt-2" style="background:var(--panel-2)">
+        <div class="field mb-2"><label title="اختر إدخال القدرة مباشرة، أو احسبها من الطن التبريدي ومعامل أداء الوحدة">طريقة إدخال القدرة</label>
+          <select data-f="chillerInputMode">
+            <option value="kw" ${load.chillerInputMode==='kw'?'selected':''}>مباشر بالكيلوواط الكهربي</option>
+            <option value="tr" ${load.chillerInputMode==='tr'?'selected':''}>عن طريق الطن التبريدي (TR)</option>
+          </select>
+        </div>
+        ${load.chillerInputMode==='tr' ? `
+        <div class="grid grid-cols-2 gap-2">
+          <div class="field"><label title="سعة التبريد المطلوبة بوحدة الطن التبريدي (1 TR ≈ 3.517 kW تبريد)">الطن التبريدي (TR)</label><input type="number" step="0.1" data-f="coolingTR" value="${load.coolingTR}"></div>
+          <div class="field"><label title="القدرة الكهربية المستهلكة لكل طن تبريد — من كتالوج الوحدة الفعلي">معامل الأداء (kW/TR)</label><input type="number" step="0.01" data-f="kwPerTon" value="${load.kwPerTon}"></div>
+        </div>
+        <p class="text-[10px] text-[var(--ink-soft)] mt-1">القدرة الكهربية المحسوبة = ${round1((load.coolingTR||0)*(load.kwPerTon||0))} kW &nbsp;·&nbsp; إرشادي: شيلر هوائي (Air-cooled) ≈ 0.9–1.2، شيلر مائي (Water-cooled) ≈ 0.55–0.75 kW/TR — راجع كتالوج الوحدة الفعلي.</p>
+        ` : ''}
+      </div>` : ''}
+
+      <button class="text-[var(--copper)] text-sm font-bold mt-2" data-toggle-details="1">تفاصيل أكتر (PF، الكفاءة، طول الكابل، القاطع) ▾</button>
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2" data-details style="display:none">
+        <div class="field"><label title="عدد أطوار التغذية — 3 للأحمال الصناعية والمحركات الكبيرة، 1 للإنارة والأحمال الصغيرة عادة">الأطوار</label>
+          <select data-f="phases">
+            <option value="3" ${load.phases===3?'selected':''}>3</option>
+            <option value="1" ${load.phases===1?'selected':''}>1</option>
+          </select>
+        </div>
+        <div class="field"><label title="معامل القدرة (Power Factor) — نسبة القدرة الفعّالة للقدرة الظاهرية، يؤثر مباشرة على قيمة التيار المحسوب">PF</label><input type="number" step="0.01" data-f="pf" value="${load.pf}"></div>
+        <div class="field" data-only-motor style="display:${load.type==='motor'?'block':'none'}"><label title="كفاءة تحويل المحرك للطاقة الكهربية إلى طاقة ميكانيكية — نسبة بين 0 و1، تزيد التيار المحسوب كلما قلّت">الكفاءة (محركات فقط)</label><input type="number" step="0.01" data-f="eff" value="${load.eff}"></div>
+        <div class="field"><label title="نسبة تشغيل هذا الحمل بمفرده من قدرته الكاملة (مثال: حمل يعمل متقطع = أقل من 1). يُطبَّق على هذا الحمل فقط، وليس على مجموع اللوحة">عامل الطلب</label><input type="number" step="0.05" data-f="demandFactor" value="${load.demandFactor}"></div>
+        <div class="field"><label title="طول كابل التغذية من اللوحة إلى هذا الحمل بالمتر — يؤثر على حساب هبوط الجهد">طول الكابل (م)</label><input type="number" data-f="cableLength" value="${load.cableLength}"></div>
+        <div class="field" data-only-motor style="display:${(load.type==='motor'||load.type==='chiller')?'block':'none'}"><label title="طريقة بدء تشغيل المحرك/الضاغط — تحدد معامل تضخيم تيار الإقلاع المستخدم في الحسابات">طريقة التشغيل (محركات/شيلر)</label>
+          <select data-f="startMethod">
+            <option value="DOL" ${load.startMethod==='DOL'?'selected':''}>مباشر</option>
+            <option value="SD" ${load.startMethod==='SD'?'selected':''}>نجمة-مثلث</option>
+            <option value="SS" ${load.startMethod==='SS'?'selected':''}>مشغل ناعم</option>
+            <option value="VFD" ${load.startMethod==='VFD'?'selected':''}>VFD</option>
+            <option value="NONE" ${load.startMethod==='NONE'?'selected':''}>—</option>
+          </select>
+        </div>
+        <div class="field"><label title="فئة القاطع — 'تلقائي' يقترح النوع المناسب حسب الأمبير المحسوب، أو حدده يدوياً">نوع القاطع</label>
+          <select data-f="breakerType">
+            <option value="auto" ${(!load.breakerType||load.breakerType==='auto')?'selected':''}>تلقائي حسب الأمبير</option>
+            <option value="MCB" ${load.breakerType==='MCB'?'selected':''}>${BREAKER_TYPE_LABEL.MCB}</option>
+            <option value="MCCB" ${load.breakerType==='MCCB'?'selected':''}>${BREAKER_TYPE_LABEL.MCCB}</option>
+            <option value="ACB" ${load.breakerType==='ACB'?'selected':''}>${BREAKER_TYPE_LABEL.ACB}</option>
+          </select>
+        </div>
+        <div class="field"><label title="قدرة القطع القصوى للقاطع (Icu) بالكيلوأمبير — لازم تكون أكبر من أو تساوي مستوى قصر الدائرة عند هذه النقطة، وإلا القاطع ممكن ينفجر بدل ما يقطع العطل">قدرة القطع Icu (kA)</label>
+          <select data-f="breakerIcu">
+            <option value="" ${!load.breakerIcu?'selected':''}>تلقائي (أعلى من مستوى القصر)</option>
+            ${STD_ICU_KA.map(k=>`<option value="${k}" ${load.breakerIcu==k?'selected':''}>${k} kA</option>`).join('')}
+          </select>
+        </div>
+        <label class="flex items-center gap-1 text-xs mt-4" title="علّم لو الوحدة دي احتياطية (Standby) — للتوثيق فقط، لا يؤثر على حسابات القاطع/الكابل"><input type="checkbox" data-f="standby" ${load.standby?'checked':''}> وحدة احتياطية (Standby)</label>
+      </div>
+    `;
+    card.querySelector('[data-toggle-details]').onclick = ()=>{
+      const det = card.querySelector('[data-details]');
+      const btn = card.querySelector('[data-toggle-details]');
+      const show = det.style.display==='none';
+      det.style.display = show?'grid':'none';
+      btn.textContent = show ? 'تفاصيل أكتر (PF، الكفاءة، الكابل، القاطع) ▴' : 'تفاصيل أكتر (PF، الكفاءة، الكابل، القاطع) ▾';
+    };
+    card.querySelectorAll('[data-f]').forEach(inp=>{
+      const field = inp.dataset.f;
+      inp.addEventListener('change', async ()=>{
+        if(inp.type==='checkbox') load[field]=inp.checked;
+        else if(['kw','pf','eff','qty','demandFactor','cableLength','coolingTR','kwPerTon'].includes(field)) load[field]=num(inp.value, load[field]);
+        else if(field==='phases') load[field]=num(inp.value, load[field]);
+        else if(field==='breakerIcu') load[field] = inp.value ? num(inp.value, null) : null;
+        else load[field]=inp.value;
+        if(field==='type'){
+          // Switching type resets PF/efficiency to sane defaults for that load category —
+          // otherwise a lighting/general load silently keeps motor-style efficiency, which
+          // inflates its design current and oversizes the breaker.
+          const d = LOAD_TYPE_DEFAULTS[load.type] || LOAD_TYPE_DEFAULTS.general;
+          load.pf = d.pf; load.eff = d.eff;
+          await saveProject(State.currentProject);
+          renderLoadsCards(panel);
+          return;
+        }
+        if(field==='chillerInputMode' || field==='coolingTR' || field==='kwPerTon'){
+          // TR mode computes kw for every downstream calc — keep it in sync and refresh the
+          // card so the live "القدرة الكهربية المحسوبة" hint and the kW field visibility update.
+          if(load.chillerInputMode==='tr') load.kw = round1((load.coolingTR||0)*(load.kwPerTon||0));
+          await saveProject(State.currentProject);
+          renderLoadsCards(panel);
+          return;
+        }
+        await saveProject(State.currentProject);
+      });
+    });
+    card.querySelector('[data-del]').onclick = async ()=>{
+      panel.loads.splice(idx,1);
+      await saveProject(State.currentProject);
+      renderLoadsCards(panel);
+    };
+    holder.appendChild(card);
+  });
+  enhanceSelects(holder);
+}
+
+/* ---- Tab: Results ---- */
+
+function renderResultsTab(container, panel){
+  const summary = calcPanelSummary(panel);
+  const hasChildren = summary.childSummaries && summary.childSummaries.length > 0;
+  container.innerHTML = `
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="font-bold text-sm text-[var(--navy)]">النوتة الحسابية</h3>
+      <button id="btn-print-notebook" class="btn-navy rounded-lg px-3 py-2 text-sm">🖨 طباعة / حفظ PDF</button>
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+      ${statCard('إجمالي الحمل الموصّل', summary.totalConnectedKW+' kW')}
+      ${statCard('تيار التصميم للقاطع الرئيسي', summary.incomerDesignCurrent+' A')}
+      ${statCard('القاطع الرئيسي المقترح', BREAKER_TYPE_LABEL[summary.incomerBreakerType]+' · '+summary.incomerBreaker+' A')}
+      ${statCard('مقطع كابل التغذية الرئيسي', summary.incomerCableSize+' مم²')}
+      ${statCard('مستوى قصر الدائرة عند المصدر (تقريبي)', summary.iscKA+' kA')}
+      ${statCard('قدرة قطع القاطع الرئيسي (Icu)', summary.incomerIcu+' kA'+(summary.incomerIcuOk?' ✓':' ⚠'))}
+      ${statCard('تصنيف/تحمّل البار الرئيسي', summary.busbarRatingA+'A / '+summary.busbarBracingKA+'kA'+((summary.busbarRatingOk&&summary.busbarBracingOk)?' ✓':' ⚠'))}
+      ${statCard('عامل التنويع المستخدم', panel.diversityFactor)}
+    </div>
+
+    ${hasChildren ? `
+    <div class="bg-[var(--panel)] rounded-xl border border-[var(--border)] p-4 overflow-x-auto mb-5">
+      <h3 class="font-bold text-sm mb-3 text-[var(--navy)]">اللوحات الفرعية المتغذية من هنا</h3>
+      <table class="data-table w-full text-xs mono">
+        <thead><tr>
+          <th>اللوحة</th><th>إجمالي حملها kW</th><th>تيار التصميم Ib (A)</th><th>مقطع الكابل مم²</th><th>القاطع (A)</th>
+        </tr></thead>
+        <tbody>
+          ${summary.childSummaries.map(({panel:cp, summary:cs})=>`
+            <tr>
+              <td class="font-bold">↳ ${escapeHtml(cp.name)}</td>
+              <td>${cs.totalConnectedKW}</td>
+              <td>${cs.incomerDesignCurrent}</td>
+              <td>${cs.incomerCableSize}</td>
+              <td>${cs.incomerBreaker}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>` : ''}
+
+    <div class="bg-[var(--panel)] rounded-xl border border-[var(--border)] p-4 overflow-x-auto">
+      <h3 class="font-bold text-sm mb-3 text-[var(--navy)]">نتائج كل حمل</h3>
+      <table class="data-table w-full text-xs mono">
+        <thead><tr>
+          <th>الحمل</th><th>FLC (A)</th><th>تيار التصميم Ib (A)</th><th>تيار الإقلاع (A)</th>
+          <th>نوع الكابل</th><th>المقطع مم²</th><th>نوع القاطع</th><th>القاطع (A)</th><th>Icu (kA)</th><th>هبوط الجهد %</th><th>ملاحظات</th>
+        </tr></thead>
+        <tbody>
+          ${summary.results.map(({load,r})=>`
+            <tr>
+              <td class="font-bold">${escapeHtml(load.name)}${load.standby?' <span class="chip chip-ok">احتياطي</span>':''}</td>
+              <td>${r.flc}</td>
+              <td>${r.ib}</td>
+              <td>${r.startingCurrent}</td>
+              <td>${r.cableTypeLabel}${r.cableArmored?' 🛡':''}</td>
+              <td>${r.cableSize}</td>
+              <td>${BREAKER_TYPE_LABEL[r.breakerType]}</td>
+              <td>${r.breaker}</td>
+              <td class="${r.breakerIcuOk?'':'text-[var(--warn)] font-bold'}">${r.breakerIcu}${r.breakerIcuOk?'':' ⚠'}</td>
+              <td class="${r.vdPercent>5?'text-[var(--warn)] font-bold':''}">${r.vdPercent}%</td>
+              <td>${r.warnings.length ? `<span class="chip chip-warn">${r.warnings.join(' · ')}</span>` : `<span class="chip chip-ok">مطابق</span>`}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+      ${panel.loads.length===0 ? '<p class="text-xs text-[var(--ink-soft)] mt-3">لا توجد أحمال مضافة بعد — اذهب لتبويب "إعدادات اللوحة والأحمال".</p>' : ''}
+    </div>
+  `;
+
+  document.getElementById('btn-print-notebook').onclick = ()=> printCalcNotebook(panel, summary);
+}
+
+function printCalcNotebook(panel, summary){
+  const rowsHtml = summary.results.map(({load,r})=>`
+    <tr>
+      <td>${escapeHtml(load.name)}${load.standby?' (احتياطي)':''}</td>
+      <td>${LOAD_TYPE_LABEL[load.type]||load.type}</td>
+      <td>${r.effKw}</td>
+      <td>${r.flc}</td>
+      <td>${r.ib}</td>
+      <td>${r.startingCurrent}</td>
+      <td>${r.cableSize}</td>
+      <td>${r.breaker}</td>
+      <td>${r.vdPercent}%</td>
+      <td>${r.warnings.length ? r.warnings.join(' · ') : 'مطابق'}</td>
+    </tr>`).join('');
+
+  const childRowsHtml = (summary.childSummaries||[]).map(({panel:cp, summary:cs})=>`
+    <tr>
+      <td>↳ ${escapeHtml(cp.name)}</td>
+      <td>لوحة فرعية</td>
+      <td>${cs.totalConnectedKW}</td>
+      <td>—</td>
+      <td>${cs.incomerDesignCurrent}</td>
+      <td>—</td>
+      <td>${cs.incomerCableSize}</td>
+      <td>${cs.incomerBreaker}</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>`).join('');
+
+  const loadNotesHtml = summary.results.map(({load,r}, idx)=> buildLoadCalcNoteHtml(load, r, idx+1)).join('');
+  const incomerNoteHtml = buildIncomerCalcNoteHtml(panel, summary);
+
+  const m = projectMeta(State.currentProject);
+  const bodyHtml = `
+    <div class="cover-block">
+      <div class="cover-row"><span>المشروع</span><b>${escapeHtml(State.currentProject.name)}</b></div>
+      <div class="cover-row"><span>العميل</span><b>${escapeHtml(m.client||'—')}</b></div>
+      <div class="cover-row"><span>الاستشاري</span><b>${escapeHtml(m.consultant||'—')}</b></div>
+      <div class="cover-row"><span>اللوحة</span><b>${escapeHtml(panel.name)} (${panel.voltage}V)</b></div>
+      <div class="cover-row"><span>رقم الرسم</span><b>${escapeHtml(m.drawingNo||'—')}</b></div>
+      <div class="cover-row"><span>المراجعة</span><b>${escapeHtml(m.revision||'A')}</b></div>
+      <div class="cover-row"><span>التاريخ</span><b>${new Date().toLocaleDateString('en-GB')}</b></div>
+    </div>
+    <h1>النوتة الحسابية — ${escapeHtml(panel.name)}</h1>
+    <div class="summary">
+      <div><b>${summary.totalConnectedKW} kW</b>إجمالي الحمل الموصّل</div>
+      <div><b>${summary.incomerDesignCurrent} A</b>تيار تصميم القاطع الرئيسي</div>
+      <div><b>${summary.incomerBreaker} A</b>القاطع الرئيسي</div>
+      <div><b>${summary.incomerCableSize} مم²</b>كابل التغذية الرئيسي</div>
+      <div><b>${summary.iscKA} kA</b>مستوى قصر الدائرة (تقريبي)</div>
+      <div><b>${panel.installMethod ? (INSTALL_METHODS[panel.installMethod]||{}).label||panel.installMethod : ''}</b>طريقة التمديد</div>
+      <div><b>${panel.conductor==='aluminum'?'ألومنيوم':'نحاس'} / ${panel.insulation==='xlpe'?'XLPE':'PVC'}</b>الموصل والعزل</div>
+    </div>
+    <h3 class="section-title">جدول ملخص النتائج</h3>
+    <table>
+      <thead><tr>
+        <th>الاسم</th><th>النوع</th><th>القدرة kW</th><th>FLC (A)</th><th>Ib (A)</th><th>تيار الإقلاع (A)</th>
+        <th>الكابل مم²</th><th>القاطع (A)</th><th>هبوط الجهد %</th><th>ملاحظات</th>
+      </tr></thead>
+      <tbody>${rowsHtml}${childRowsHtml}</tbody>
+    </table>
+
+    <h3 class="section-title">النوتة الحسابية التفصيلية (بالمعادلات) لكل حمل</h3>
+    ${loadNotesHtml}
+
+    <h3 class="section-title">حساب القاطع والكابل الرئيسي للوحة</h3>
+    ${incomerNoteHtml}
+
+    <div class="signoff">
+      <div><span>أُعدّ بواسطة</span><div class="sig-line"></div><b>${escapeHtml(m.engineer||'')}</b></div>
+      <div><span>روجع بواسطة</span><div class="sig-line"></div></div>
+      <div><span>التاريخ</span><div class="sig-line"></div></div>
+    </div>
+    <footer>حسابات تقريبية اعتماداً على جداول IEC 60364-5-52 مبسّطة — أُعدّت بواسطة أداة مصمم الشبكات الكهربائية.</footer>
+  `;
+
+  const extraHead = `
+    h1{font-size:20px; margin-bottom:2px;}
+    h2{font-size:14px; color:#4A5A75; margin-top:0; font-weight:normal;}
+    .cover-block{border:1px solid #0B2545; border-radius:8px; padding:10px 16px; margin-bottom:16px; background:#F7F5EF;}
+    .cover-row{display:flex; justify-content:space-between; font-size:12px; padding:3px 0; border-bottom:1px dashed #D7E3EE;}
+    .cover-row:last-child{border-bottom:none;}
+    .cover-row span{color:#4A5A75;}
+    .cover-row b{color:#0B2545;}
+    .section-title{font-size:15px; color:#0B2545; margin:22px 0 8px; border-bottom:2px solid #0B2545; padding-bottom:4px;}
+    table{width:100%; border-collapse:collapse; margin-top:10px; font-size:12px;}
+    th,td{border:1px solid #ccc; padding:6px 8px; text-align:center;}
+    th{background:#0B2545; color:white;}
+    .summary{display:flex; flex-wrap:wrap; gap:10px; margin-top:14px;}
+    .summary div{border:1px solid #ccc; border-radius:6px; padding:8px 12px; font-size:12px;}
+    .summary b{display:block; font-size:15px;}
+    footer{margin-top:24px; font-size:11px; color:#4A5A75;}
+    .load-note{border:1px solid #D7E3EE; border-radius:8px; padding:12px 16px; margin-bottom:14px; page-break-inside:avoid;}
+    .load-note h4{margin:0 0 8px; font-size:13.5px; color:#0B2545;}
+    .load-note .warn-line{color:#B3261E; font-weight:700; margin-top:6px; font-size:11.5px;}
+    .eq{font-family:'Consolas','Roboto Mono',monospace; font-size:12px; margin:3px 0; direction:ltr; text-align:left; unicode-bidi:embed;}
+    .eq .lbl{font-family:Arial,Tahoma,sans-serif; direction:rtl; unicode-bidi:embed; color:#4A5A75; display:inline-block; min-width:150px;}
+    .ref{font-size:10px; color:#8A97AB; margin:0 0 6px 150px; font-style:italic;}
+    .signoff{display:flex; gap:24px; margin-top:34px;}
+    .signoff > div{flex:1; font-size:11px; color:#4A5A75;}
+    .signoff .sig-line{border-bottom:1px solid #16233B; height:34px; margin:6px 0 4px;}
+    @media print{ #print-toolbar{display:none;} }
+  `;
+
+  openPrintWindow('النوتة الحسابية — ' + panel.name, bodyHtml, extraHead);
+}
+
+// Builds one formula-by-formula derivation block for a single load: FLC -> Ib -> (starting
+// current for motors) -> cable selection (Iz with correction factors) -> breaker -> voltage drop.
+// This is what actually answers "show me the equations", not just the final numbers.
+function buildLoadCalcNoteHtml(load, r, index){
+  const phaseEq = load.phases===3
+    ? `FLC = P / (√3 × V × PF${load.type==='motor'?' × η':''})`
+    : `FLC = P / (V × PF${load.type==='motor'?' × η':''})`;
+  const phaseSub = load.phases===3
+    ? `= ${r.effKw*1000} / (1.732 × ${r.V} × ${load.pf}${load.type==='motor'?` × ${load.eff}`:''}) = <b>${r.flc} A</b>`
+    : `= ${r.effKw*1000} / (${r.V} × ${load.pf}${load.type==='motor'?` × ${load.eff}`:''}) = <b>${r.flc} A</b>`;
+
+  const isMotorLike = load.type==='motor' || load.type==='chiller';
+  const startingBlock = isMotorLike ? `
+    <div class="eq"><span class="lbl">تيار الإقلاع (طريقة ${STARTMETHOD_LABEL[load.startMethod]||load.startMethod}):</span> Istart = FLC × ${r.startFactor} = ${r.flc} × ${r.startFactor} = <b>${r.startingCurrent} A</b></div>
+    ${load.type==='chiller' ? '<div class="ref">معامل الإقلاع تقريبي لضاغط الشيلر — الرقم الفعلي (LRA) يُؤخذ من كتالوج الضاغط</div>' : ''}
+  ` : '';
+
+  const chillerBlock = (load.type==='chiller' && load.chillerInputMode==='tr') ? `
+    <div class="eq"><span class="lbl">تحويل الطن التبريدي لقدرة كهربية:</span> P = الطن التبريدي × معامل الأداء (kW/TR) = ${load.coolingTR} × ${load.kwPerTon} = <b>${r.effKw} kW</b></div>
+    <div class="ref">معامل الأداء (kW/TR) من كتالوج الشيلر الفعلي — إرشادي: هوائي 0.9–1.2، مائي 0.55–0.75 kW/TR</div>
+  ` : '';
+
+  return `
+  <div class="load-note">
+    <h4>${index}) ${escapeHtml(load.name)} — ${LOAD_TYPE_LABEL[load.type]||load.type}${load.standby?' (احتياطي)':''} — ${r.effKw} kW × ${load.qty||1}</h4>
+
+    ${chillerBlock}
+    <div class="eq"><span class="lbl">تيار التشغيل الكامل (FLC):</span> ${phaseEq}</div>
+    <div class="eq" style="padding-right:150px">${phaseSub}</div>
+
+    <div class="eq"><span class="lbl">تيار التصميم (Ib):</span> Ib = FLC × عامل الطلب = ${r.flc} × ${load.demandFactor||1} = <b>${r.ib} A</b></div>
+    <div class="ref">عامل الطلب (Demand Factor) — IEC 60364-1، البند 311 / مبني على طبيعة تشغيل الحمل الفعلية</div>
+    ${startingBlock}
+
+    <div class="eq"><span class="lbl">الأمبير القياسي الأساسي (من الجدول):</span> Io = ${r.baseAmpacity} A &nbsp; (${r.methodLabel})</div>
+    <div class="ref">IEC 60364-5-52 — جدول الحمل الأمبيري القياسي حسب طريقة التمديد</div>
+    <div class="eq"><span class="lbl">معاملات التصحيح:</span> Ca (حرارة) = ${r.ca} &nbsp;·&nbsp; Cg (تجميع) = ${r.cg} &nbsp;·&nbsp; موصل = ${r.condFactorAmpacity}</div>
+    <div class="ref">IEC 60364-5-52 — جدول B.52.14 (معامل التجميع) وجدول B.52.15 (معامل الحرارة المحيطة)</div>
+    <div class="eq"><span class="lbl">القدرة المصححة للكابل (Iz):</span> Iz = Io × Ca × Cg × معامل الموصل × معامل التمديد = ${r.izCorrected} A</div>
+    <div class="eq"><span class="lbl">اختيار القاطع (In):</span> شرط Ib ≤ In ≤ Iz &nbsp;→&nbsp; ${r.ib} ≤ <b>${r.breaker} A</b> ≤ ${r.izCorrected}</div>
+    <div class="ref">IEC 60364-4-43، البند 433.1 — شرط حماية الكابل من الحمل الزائد</div>
+    <div class="eq"><span class="lbl">اختيار الكابل:</span> أقرب مقطع يحقق Iz ≥ In &nbsp;→&nbsp; <b>${r.cableSize} مم²</b></div>
+
+    <div class="eq"><span class="lbl">هبوط الجهد (ΔV):</span> ΔV = (mV/A/m من الجدول × معامل الموصل) × Ib × الطول / 1000${r.singlePhaseAdj!==1?' × 1.15 (طور واحد)':''}</div>
+    <div class="eq" style="padding-right:150px">= (${r.vdTableValue} × ${r.condFactorVd}) × ${r.ib} × ${load.cableLength} / 1000${r.singlePhaseAdj!==1?` × ${r.singlePhaseAdj}`:''} = ${r.vdVolts} V</div>
+    <div class="eq"><span class="lbl">هبوط الجهد %:</span> ΔV% = ΔV / V × 100 = ${r.vdVolts} / ${r.V} × 100 = <b>${r.vdPercent}%</b></div>
+    <div class="ref">الحد الموصى به: 5% كحد أقصى للأحمال العامة (IEC 60364-5-52، الملحق G)</div>
+
+    ${r.warnings.length ? `<div class="warn-line">⚠ ${r.warnings.join(' · ')}</div>` : ''}
+  </div>`;
+}
+
+// Same style of derivation, but for the panel's own incomer (feeds from all loads + any
+// sub-panels combined) rather than a single load.
+function buildIncomerCalcNoteHtml(panel, summary){
+  const sel = pickCableAndBreaker(panel, summary.incomerDesignCurrent);
+  return `
+  <div class="load-note">
+    <h4>القاطع والكابل الرئيسي — ${escapeHtml(panel.name)}</h4>
+    <div class="eq"><span class="lbl">مجموع تيارات الأحمال + اللوحات الفرعية:</span> ΣIb = ${round1(summary.incomerDesignCurrent/(panel.diversityFactor||1))} A</div>
+    <div class="eq"><span class="lbl">تيار التصميم للقاطع الرئيسي:</span> Iincomer = ΣIb × عامل التنويع = ΣIb × ${panel.diversityFactor||1} = <b>${summary.incomerDesignCurrent} A</b></div>
+    <div class="eq"><span class="lbl">الأمبير القياسي الأساسي:</span> Io = ${sel.baseAmpacity} A &nbsp; (${sel.methodLabel})</div>
+    <div class="eq"><span class="lbl">معاملات التصحيح:</span> Ca = ${sel.ca} &nbsp;·&nbsp; Cg = ${sel.cg} &nbsp;·&nbsp; موصل = ${sel.condFactorAmpacity}</div>
+    <div class="eq"><span class="lbl">القدرة المصححة (Iz):</span> Iz = ${round1(sel.izCorrected)} A</div>
+    <div class="eq"><span class="lbl">القاطع الرئيسي المختار:</span> <b>${summary.incomerBreaker} A</b> &nbsp;·&nbsp; الكابل: <b>${summary.incomerCableSize} مم²</b></div>
+    <div class="eq"><span class="lbl">مستوى قصر الدائرة (Isc):</span> Isc = (kVA×1000) / (√3 × V × %Z) = <b>${summary.iscKA} kA</b> (تقريبي)</div>
+    <div class="ref">تقريب مبسّط وفق منهج IEC 60909 — لا يشمل ممانعة الشبكة العلوية أو الكابلات؛ للاستخدام الأولي فقط</div>
+  </div>`;
+}
+
+function statCard(label, value){
+  return `<div class="bg-[var(--panel)] rounded-xl border border-[var(--border)] p-3">
+    <div class="text-[10px] text-[var(--ink-soft)] mb-1">${label}</div>
+    <div class="text-lg font-extrabold text-[var(--navy)] mono">${value}</div>
+  </div>`;
+}
+
+/* ---- Tab: SLD (Single Line Diagram) ---- */
+
+function renderSldTab(container, panel){
+  const summary = calcPanelSummary(panel);
+  const svg = buildSldSvg(panel, summary);
+  container.innerHTML = `
+    <div class="bg-[var(--panel)] rounded-xl border border-[var(--border)] p-3">
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="font-bold text-sm text-[var(--navy)]">مخطط اللوحة أحادي الخط</h3>
+        <button id="btn-print-sld" class="btn-navy rounded-lg px-3 py-2 text-sm">🖨 طباعة / حفظ PDF</button>
+      </div>
+      <div class="overflow-auto rounded-lg border border-[var(--border)]" id="sld-holder" dir="ltr" style="max-height:70vh;">${svg}</div>
+      <p class="text-[10px] text-[var(--ink-soft)] mt-2">المخطط بيترسم من الشمال لليمين (زي أي رسمة كهربائية قياسية) - اتمرر يميناً/شمالاً لو محتاج تشوف أجزاء منه.</p>
+    </div>
+  `;
+  document.getElementById('btn-print-sld').onclick = ()=>{
+    openPrintWindow(panel.name, svg);
+  };
+}
+
+/* ---- Project-wide overview: all panels (main + sub) in one combined SLD ---- */
+
+function renderProjectOverview(main){
+  const project = State.currentProject;
+  const svg = buildProjectTreeSvg(project);
+  const orphans = findOrphanedPanels(project);
+  main.innerHTML = `
+    <div class="p-5 max-w-6xl mx-auto">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-xl font-extrabold text-[var(--navy)]">${escapeHtml(project.name)}</h2>
+          <p class="text-xs text-[var(--ink-soft)] mono">المخطط العام — كل اللوحات الرئيسية والفرعية مع بعض</p>
+        </div>
+        <button id="btn-back-to-panel" class="btn-navy rounded-lg px-3 py-1.5 text-xs">← رجوع للوحة</button>
+      </div>
+      ${orphans.length ? `
+      <div class="rounded-xl border border-[var(--warn)] p-3 mb-4" style="background:rgba(211,47,47,.08)">
+        <p class="text-xs font-bold text-[var(--warn)] mb-2">⚠ في ${orphans.length} لوحة فرعية فقدت ربطها باللوحة الأم (يمكن اتغير اسم/تركيب اللوحة الأصلية) — وبالتالي ظهرت في المخطط كأنها مصدر مستقل منفصل بدل ما تكون متصلة تحت لوحتها:</p>
+        ${orphans.map(p=>`
+          <div class="flex items-center justify-between bg-white rounded-lg border border-[var(--border)] px-3 py-2 mb-2 text-xs">
+            <span><b>${escapeHtml(p.name)}</b> — كانت مفروض تتغذى من لوحة بقت مش موجودة</span>
+            <button data-fix-orphan="${p.id}" class="rounded-lg px-2 py-1 border border-[var(--copper)] text-[var(--copper-dark)] font-bold">اجعلها لوحة رئيسية مستقلة</button>
+          </div>
+        `).join('')}
+      </div>` : ''}
+      <div class="bg-[var(--panel)] rounded-xl border border-[var(--border)] p-3">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="font-bold text-sm text-[var(--navy)]">المخطط العام أحادي الخط للمشروع</h3>
+          <button id="btn-print-project-sld" class="btn-navy rounded-lg px-3 py-2 text-sm">🖨 طباعة / حفظ PDF</button>
+        </div>
+        <div class="overflow-auto rounded-lg border border-[var(--border)]" id="project-sld-holder" dir="ltr" style="max-height:70vh;">${svg}</div>
+        <p class="text-[10px] text-[var(--ink-soft)] mt-2">كل لوحة رئيسية بمصدرها الخاص (محول/مرفق)، واللوحات الفرعية متصلة تحت اللوحة اللي بتتغذى منها.</p>
+      </div>
+    </div>
+  `;
+  document.getElementById('btn-back-to-panel').onclick = ()=>{ State.viewMode='panel'; renderMain(); };
+  document.getElementById('btn-print-project-sld').onclick = ()=>{
+    openPrintWindow(project.name + ' - المخطط العام', svg);
+  };
+  main.querySelectorAll('[data-fix-orphan]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const p = project.panels.find(pp=>pp.id===btn.dataset.fixOrphan);
+      if(p) fixOrphanedPanel(p, 'detach');
+    };
+  });
+}
+
+function buildProjectTreeSvg(project){
+  const FEEDER_SPACING = 190;
+  const LEVEL_HEIGHT = 340; // vertical space consumed by one panel's transformer/bus/feeders before the next level
+  const MV_COLOR = '#7A2E1D';   // burgundy — anything ≥1000V, so MV is visually distinct from LV at a glance
+  const LV_COLOR = '#0B2545';
+  const panels = project.panels || [];
+  const byId = Object.fromEntries(panels.map(p=>[p.id,p]));
+  const childrenOf = pid => panels.filter(p => p.parentPanelId === pid);
+  const roots = panels.filter(p => !(p.sourceType==='sub' && p.parentPanelId && byId[p.parentPanelId]));
+  const usedRelays = new Set(); // tracks which device numbers actually appear, for the legend
+  const hasMV = panels.some(p=>p.voltage>=1000);
+  const hasArmored = panels.some(p=>p.loads.some(l=>cableTypeInfo(l.cableType).armored));
+
+  function buildNode(panel){
+    const summary = calcPanelSummary(panel);
+    const children = childrenOf(panel.id).map(buildNode);
+    return {panel, summary, children};
+  }
+  const tree = roots.map(buildNode);
+
+  function subtreeWidth(node){
+    const loadsWidth = node.panel.loads.length * FEEDER_SPACING;
+    const childrenWidth = node.children.reduce((s,c)=> s + subtreeWidth(c), 0);
+    return Math.max(FEEDER_SPACING, loadsWidth + childrenWidth);
+  }
+  function subtreeDepth(node){
+    if(node.children.length===0) return 1;
+    return 1 + Math.max(...node.children.map(subtreeDepth));
+  }
+
+  const totalWidth = Math.max(900, tree.reduce((s,n)=> s + subtreeWidth(n) + 80, 40));
+  const maxDepth = tree.length ? Math.max(...tree.map(subtreeDepth)) : 1;
+  const totalHeight = 80 + maxDepth*LEVEL_HEIGHT + 100 + 90; // +90 for the legend strip at the bottom
+
+  let svgBody = '';
+  let curX = 40;
+
+  function drawNode(node, xStart, width, topY, isRoot){
+    const {panel, summary, children} = node;
+    const busX = xStart + width/2;
+    const parentPanelForLink = !isRoot ? byId[panel.parentPanelId] : null;
+    const isXfmrLink = !isRoot && parentPanelForLink && isTransformerLink(parentPanelForLink.voltage, panel.voltage);
+    const busY = topY + (isRoot ? 190 : (isXfmrLink ? 130 : 60));
+    const themeColor = panel.voltage >= 1000 ? MV_COLOR : LV_COLOR;
+
+    // Source block
+    if(isRoot){
+      usedRelays.add('50/51');
+      svgBody += `
+        <text x="${busX-70}" y="${topY-6}" font-size="12" font-weight="700" fill="${themeColor}" text-anchor="middle">المصدر: محول ${panel.transformerKVA} kVA ${escapeHtml(panel.vectorGroup||'')}</text>
+        ${svgLightningArrester(busX+8, topY-2)}
+        <line x1="${busX}" y1="${topY+10}" x2="${busX}" y2="${topY+40}" stroke="${themeColor}" stroke-width="2"/>
+        <polygon points="${busX},${topY+40} ${busX-12},${topY+20} ${busX+12},${topY+20}" fill="none" stroke="${themeColor}" stroke-width="2"/>
+        <circle cx="${busX}" cy="${topY+56}" r="14" fill="none" stroke="${themeColor}" stroke-width="2"/>
+        <circle cx="${busX}" cy="${topY+72}" r="14" fill="none" stroke="${themeColor}" stroke-width="2"/>
+        <line x1="${busX}" y1="${topY+86}" x2="${busX}" y2="${topY+120}" stroke="${themeColor}" stroke-width="2"/>
+        <rect x="${busX-14}" y="${topY+120}" width="28" height="34" fill="#F7F5EF" stroke="${themeColor}" stroke-width="2"/>
+        <line x1="${busX-10}" y1="${topY+150}" x2="${busX+10}" y2="${topY+124}" stroke="${themeColor}" stroke-width="2"/>
+        ${svgCT(busX-28, topY+137)}
+        ${svgRelayTag(busX+14, topY+137, '50/51')}
+        <line x1="${busX}" y1="${topY+154}" x2="${busX}" y2="${busY}" stroke="${themeColor}" stroke-width="2"/>
+        <text x="${busX+58}" y="${topY+135}" font-size="9" fill="#4A5A75" text-anchor="start" font-family="monospace" class="ann">${BREAKER_TYPE_LABEL[summary.incomerBreakerType]}</text>
+        <text x="${busX+58}" y="${topY+147}" font-size="9" fill="#4A5A75" text-anchor="start" font-family="monospace" class="ann">${summary.incomerBreaker}A · ${summary.incomerCableSize}mm² · ${panel.incomerCableLength}m</text>
+      `;
+    } else {
+      const parentPanel = parentPanelForLink;
+      const isXfmr = isXfmrLink;
+      if(isXfmr) usedRelays.add('87T');
+      // topY is 60px below the parent's actual busY (room for the "من: ..." label + breaker
+      // spacing) — but the line itself must reach all the way up to the parent's bus bar,
+      // otherwise the child panel renders as a disconnected floating fragment.
+      svgBody += `
+        <text x="${busX}" y="${topY-8}" font-size="10" fill="#4A5A75" text-anchor="middle" class="ann">من: ${escapeHtml((parentPanel||{}).name||'')}</text>
+        <line x1="${busX}" y1="${topY-60}" x2="${busX}" y2="${topY+16}" stroke="${themeColor}" stroke-width="2"/>
+        <rect x="${busX-12}" y="${topY+16}" width="24" height="28" fill="#F7F5EF" stroke="${themeColor}" stroke-width="2"/>
+        <line x1="${busX-8}" y1="${topY+40}" x2="${busX+8}" y2="${topY+18}" stroke="${themeColor}" stroke-width="2"/>
+        ${isXfmr ? svgCT(busX-24, topY+30) : ''}
+        ${isXfmr ? svgRelayTag(busX+12, topY+30, '87T') : ''}
+        <line x1="${busX}" y1="${topY+44}" x2="${busX}" y2="${isXfmr?topY+70:busY}" stroke="${themeColor}" stroke-width="2"/>
+        <text x="${busX+16}" y="${topY+38}" font-size="8" fill="#4A5A75" text-anchor="start" font-family="monospace" class="ann">${BREAKER_TYPE_LABEL[summary.incomerBreakerType]} ${summary.incomerBreaker}A</text>
+        ${isXfmr ? `
+          <circle cx="${busX}" cy="${topY+82}" r="12" fill="none" stroke="${themeColor}" stroke-width="2"/>
+          <circle cx="${busX}" cy="${topY+100}" r="12" fill="none" stroke="${themeColor}" stroke-width="2"/>
+          <text x="${busX+20}" y="${topY+90}" font-size="8" fill="#4A5A75" text-anchor="start" font-family="monospace">${parentPanel.voltage}/${panel.voltage}V</text>
+          <text x="${busX+20}" y="${topY+101}" font-size="8" fill="#4A5A75" text-anchor="start" font-family="monospace">${escapeHtml(panel.vectorGroup||'')}</text>
+          <line x1="${busX}" y1="${topY+112}" x2="${busX}" y2="${busY}" stroke="${themeColor}" stroke-width="2"/>
+        ` : ''}
+      `;
+    }
+
+    // Panel label + bus bar
+    const busLineStart = xStart + 10;
+    const busLineEnd = xStart + width - 10;
+    svgBody += `
+      <text x="${busX}" y="${busY-8}" font-size="11" font-weight="700" fill="${themeColor}" text-anchor="middle">${escapeHtml(panel.name)} — ${panel.voltage}V</text>
+      <line x1="${Math.min(busLineStart,busX)}" y1="${busY}" x2="${Math.max(busLineEnd,busX)}" y2="${busY}" stroke="${themeColor}" stroke-width="4"/>
+    `;
+
+    // Own load feeders (left portion of the allocated width)
+    let slotX = xStart + FEEDER_SPACING/2;
+    panel.loads.forEach((load, i)=>{
+      const r = summary.results[i].r;
+      const x = slotX;
+      const isMotorLike = load.type==='motor' || load.type==='chiller';
+      if(isMotorLike) usedRelays.add('49/51');
+      if(r.cableArmored) usedRelays.add('ARMORED');
+      let symbol;
+      if(load.type==='motor'){
+        symbol = `<circle cx="${x}" cy="${busY+120}" r="18" fill="white" stroke="${themeColor}" stroke-width="2"/><text x="${x}" y="${busY+126}" text-anchor="middle" font-size="14" font-weight="700" fill="${themeColor}">M</text>`;
+      } else if(load.type==='chiller'){
+        symbol = `<rect x="${x-16}" y="${busY+102}" width="32" height="32" fill="white" stroke="${themeColor}" stroke-width="2"/><text x="${x}" y="${busY+128}" text-anchor="middle" font-size="20" fill="${themeColor}">❄</text>`;
+      } else {
+        symbol = `<rect x="${x-16}" y="${busY+102}" width="32" height="32" fill="white" stroke="${themeColor}" stroke-width="2"/><text x="${x}" y="${busY+122}" text-anchor="middle" font-size="9" fill="${themeColor}">${load.type==='lighting'?'إنارة':'حمل'}</text>`;
+      }
+      svgBody += `
+        <line x1="${x}" y1="${busY}" x2="${x}" y2="${busY+30}" stroke="${themeColor}" stroke-width="2"/>
+        <rect x="${x-12}" y="${busY+30}" width="24" height="28" fill="#F7F5EF" stroke="${themeColor}" stroke-width="2"/>
+        <line x1="${x-8}" y1="${busY+54}" x2="${x+8}" y2="${busY+32}" stroke="${themeColor}" stroke-width="2"/>
+        ${isMotorLike ? svgRelayTag(x+10, busY+42, '49/51', 18) : ''}
+        <line x1="${x}" y1="${busY+58}" x2="${x}" y2="${busY+102}" stroke="${themeColor}" stroke-width="2"/>
+        ${symbol}
+        <text x="${x}" y="${busY+70}" text-anchor="middle" font-size="8" fill="#4A5A75" font-family="monospace" class="ann">${BREAKER_TYPE_LABEL[r.breakerType]}</text>
+        <text x="${x}" y="${busY+81}" text-anchor="middle" font-size="9" fill="#4A5A75" font-family="monospace" class="ann">${r.breaker}A · ${r.cableSize}mm²${r.cableArmored?' 🛡':''}</text>
+        <text x="${x}" y="${busY+156}" text-anchor="middle" font-size="10" font-weight="700" fill="#16233B" class="ann">${escapeHtml(load.name)}</text>
+        <text x="${x}" y="${busY+169}" text-anchor="middle" font-size="9" fill="#4A5A75" font-family="monospace" class="ann">${r.effKw} kW</text>
+      `;
+      slotX += FEEDER_SPACING;
+    });
+
+    // Child sub-panels (right portion), each recursively drawn below
+    children.forEach(child=>{
+      const cw = subtreeWidth(child);
+      drawNode(child, slotX - FEEDER_SPACING/2, cw, busY + 60, false);
+      slotX += cw;
+    });
+  }
+
+  tree.forEach(node=>{
+    const w = subtreeWidth(node);
+    drawNode(node, curX, w, 80, true);
+    curX += w + 80;
+  });
+
+  const legendY = totalHeight - 158;
+  const legendItems = [
+    {show:true, sym:'M', label:'محرك/مضخة'},
+    {show:true, sym:'❄', label:'شيلر (وحدة تبريد)'},
+    {show:true, sym:'CT', label:'محول تيار (قياس)'},
+    {show:true, sym:'50/51', label:'حماية زيادة تيار (فرق/رئيسي)'},
+    {show:usedRelays.has('87T'), sym:'87T', label:'حماية تفاضلية للمحول'},
+    {show:usedRelays.has('49/51'), sym:'49/51', label:'حماية حرارية/زيادة تيار للمحرك'},
+    {show:hasArmored, sym:'🛡', label:'كابل مدرّع (Armored)'},
+    {show:hasMV, sym:'MV', labelColor:MV_COLOR, label:'جهد متوسط (≥1000V)'},
+  ].filter(it=>it.show);
+
+  return `
+  <svg width="${totalWidth}" height="${totalHeight}" viewBox="0 0 ${totalWidth} ${totalHeight}" xmlns="http://www.w3.org/2000/svg" style="background:#FBFAF6;">
+    <defs>
+      <pattern id="grid2" width="20" height="20" patternUnits="userSpaceOnUse">
+        <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#E3EAF2" stroke-width="1"/>
+      </pattern>
+    </defs>
+    <style>
+      text{unicode-bidi:plaintext;}
+      .ann{paint-order:stroke; stroke:#FBFAF6; stroke-width:3px; stroke-linejoin:round;}
+    </style>
+    <rect width="${totalWidth}" height="${totalHeight}" fill="url(#grid2)"/>
+    <rect x="4" y="4" width="${totalWidth-8}" height="${totalHeight-8}" fill="none" stroke="#0B2545" stroke-width="2"/>
+    ${svgBody}
+    <g transform="translate(20, ${legendY})">
+      <rect x="0" y="0" width="${Math.min(totalWidth-40, 130*legendItems.length)}" height="70" fill="white" stroke="#0B2545" stroke-width="1.3" rx="6"/>
+      <text x="10" y="16" font-size="10" font-weight="700" fill="#0B2545">مفتاح الرموز (Legend)</text>
+      ${legendItems.map((it,i)=>`
+        <text x="${10+i*130}" y="40" font-size="12" font-weight="700" fill="${it.labelColor||'#0B2545'}">${it.sym}</text>
+        <text x="${34+i*130}" y="40" font-size="8.5" fill="#4A5A75">${it.label}</text>
+      `).join('')}
+    </g>
+    ${buildTitleBlockSvg(totalWidth-320, totalHeight-76, 310, 68, {project, drawingTitle:'المخطط العام أحادي الخط للمشروع (SLD)'})}
+  </svg>`;
+}
+
+/* ---- Professional single-line symbol helpers (IEC/ANSI style) ---- */
+
+// A drawing title block in the format used on real engineering SLDs: project/client/consultant
+// identification on the left, drawing number + revision + date + engineer sign-off on the right.
+// x,y is the TOP-LEFT corner; w,h are the block's outer size.
+function buildTitleBlockSvg(x, y, w, h, {project, drawingTitle, extraLine}){
+  const m = projectMeta(project);
+  const dateStr = new Date().toLocaleDateString('en-GB');
+  const colSplit = w*0.60;
+  return `
+  <g transform="translate(${x}, ${y})">
+    <rect x="0" y="0" width="${w}" height="${h}" fill="white" stroke="#0B2545" stroke-width="1.5"/>
+    <line x1="0" y1="20" x2="${w}" y2="20" stroke="#0B2545" stroke-width="1"/>
+    <line x1="${colSplit}" y1="0" x2="${colSplit}" y2="${h}" stroke="#0B2545" stroke-width="1"/>
+    <line x1="${colSplit}" y1="${h*0.55}" x2="${w}" y2="${h*0.55}" stroke="#0B2545" stroke-width="1"/>
+
+    <text x="8" y="14" font-size="11" font-weight="700" fill="#0B2545">${escapeHtml(project.name)}</text>
+
+    <text x="8" y="34" font-size="8.5" fill="#4A5A75">العميل: ${escapeHtml(m.client||'—')}</text>
+    <text x="8" y="47" font-size="8.5" fill="#4A5A75">الاستشاري: ${escapeHtml(m.consultant||'—')}</text>
+    <text x="8" y="60" font-size="9" font-weight="700" fill="#0B2545">${escapeHtml(drawingTitle)}</text>
+    ${extraLine ? `<text x="8" y="${h-8}" font-size="8" fill="#4A5A75">${extraLine}</text>` : ''}
+
+    <text x="${colSplit+8}" y="14" font-size="9" font-weight="700" fill="#0B2545">رقم الرسم: ${escapeHtml(m.drawingNo||'—')}</text>
+    <text x="${colSplit+8}" y="${h*0.55-6}" font-size="8.5" fill="#4A5A75">التاريخ: ${dateStr}</text>
+    <text x="${w-8}" y="${h*0.55-6}" font-size="8.5" fill="#4A5A75" text-anchor="end">مراجعة: ${escapeHtml(m.revision||'A')}</text>
+    <text x="${colSplit+8}" y="${h-8}" font-size="8.5" fill="#4A5A75">المهندس: ${escapeHtml(m.engineer||'—')}</text>
+  </g>`;
+}
+
+function svgRelayTag(x, y, num, dx){
+  // dx pushes the relay bubble clear of the breaker box it's tagging; 22 is the safe minimum
+  // for the box widths used in this file (24-28px) — smaller values were causing the bubble
+  // to visually collide with the box edge.
+  dx = Math.max(dx || 22, 22);
+  const r = 10, cx = x + dx;
+  return `
+    <line x1="${x}" y1="${y}" x2="${cx-r}" y2="${y}" stroke="#0B2545" stroke-width="1" stroke-dasharray="2,2"/>
+    <circle cx="${cx}" cy="${y}" r="${r}" fill="white" stroke="#0B2545" stroke-width="1.3"/>
+    <text x="${cx}" y="${y+3}" text-anchor="middle" font-size="7.5" fill="#0B2545" font-family="monospace">${num}</text>
+  `;
+}
+function svgDisconnector(x, yTop, yBottom){
+  return `
+    <line x1="${x}" y1="${yTop}" x2="${x}" y2="${yTop+6}" stroke="#0B2545" stroke-width="2"/>
+    <circle cx="${x}" cy="${yTop+6}" r="2.3" fill="#0B2545"/>
+    <line x1="${x}" y1="${yTop+6}" x2="${x+10}" y2="${yBottom-6}" stroke="#0B2545" stroke-width="2"/>
+    <circle cx="${x}" cy="${yBottom-6}" r="2.3" fill="#0B2545"/>
+    <line x1="${x}" y1="${yBottom-6}" x2="${x}" y2="${yBottom}" stroke="#0B2545" stroke-width="2"/>
+  `;
+}
+function svgCT(x, y){
+  // Label sits BELOW the circle rather than to its right — putting it to the right placed it
+  // directly under/behind the adjacent breaker box in every diagram that used this symbol.
+  return `
+    <circle cx="${x}" cy="${y}" r="7" fill="none" stroke="#0B2545" stroke-width="1.3"/>
+    <text x="${x}" y="${y+19}" text-anchor="middle" font-size="7.5" fill="#4A5A75" font-family="monospace" class="ann">CT</text>
+  `;
+}
+function svgLightningArrester(x, y){
+  const ax = x+22;
+  return `
+    <line x1="${x}" y1="${y}" x2="${ax}" y2="${y}" stroke="#0B2545" stroke-width="1"/>
+    <line x1="${ax}" y1="${y}" x2="${ax}" y2="${y+12}" stroke="#0B2545" stroke-width="1.3"/>
+    <polygon points="${ax-5},${y+12} ${ax+5},${y+12} ${ax},${y+21}" fill="none" stroke="#0B2545" stroke-width="1.3"/>
+    <line x1="${ax}" y1="${y+21}" x2="${ax}" y2="${y+27}" stroke="#0B2545" stroke-width="1"/>
+    <line x1="${ax-6}" y1="${y+27}" x2="${ax+6}" y2="${y+27}" stroke="#0B2545" stroke-width="1.3"/>
+    <line x1="${ax-3.5}" y1="${y+30}" x2="${ax+3.5}" y2="${y+30}" stroke="#0B2545" stroke-width="1"/>
+    <text x="${ax+9}" y="${y+17}" font-size="7" fill="#4A5A75" font-family="monospace">L.A.</text>
+  `;
+}
+// Is this parent→child link an MV/LV (or similar step-down) transformer connection,
+// judged from the voltage ratio between the two panels, rather than a plain feeder?
+function isTransformerLink(parentVoltage, childVoltage){
+  if(!parentVoltage || !childVoltage) return false;
+  return parentVoltage / childVoltage >= 1.8;
+}
+
+function buildSldSvg(panel, summary){
+  const childPanels = (State.currentProject && State.currentProject.panels || []).filter(p => p.parentPanelId === panel.id);
+
+  const loadItems = panel.loads.map((load, i) => ({
+    kind: 'load',
+    name: load.name,
+    kw: effectiveLoadKW(load),
+    standby: load.standby,
+    isMotor: load.type === 'motor',
+    isLighting: load.type === 'lighting',
+    isChiller: load.type === 'chiller',
+    breaker: summary.results[i].r.breaker,
+    cableSize: summary.results[i].r.cableSize,
+    cableLength: load.cableLength,
+  }));
+
+  const panelItems = childPanels.map(cp => {
+    const cs = calcPanelSummary(cp);
+    return {
+      kind: 'panel',
+      name: cp.name,
+      kw: cs.totalConnectedKW,
+      breaker: cs.incomerBreaker,
+      cableSize: cs.incomerCableSize,
+      cableLength: cp.incomerCableLength,
+      childVoltage: cp.voltage,
+    };
+  });
+
+  const items = [...loadItems, ...panelItems];
+  const n = Math.max(items.length, 1);
+  const feederSpacing = 190;
+  const height = 480;
+  const busY = 190;
+  const startX = 120;
+  const srcX = startX - 40;
+  const width = Math.max(900, startX + n*feederSpacing + 210);
+
+  let feeders = '';
+  items.forEach((item, i)=>{
+    const x = startX + i*feederSpacing;
+    const isXfmrLink = item.kind === 'panel' && isTransformerLink(panel.voltage, item.childVoltage);
+    let symbol;
+    if(isXfmrLink){
+      symbol = `
+        <circle cx="${x}" cy="368" r="13" fill="none" stroke="#0B2545" stroke-width="2"/>
+        <circle cx="${x}" cy="392" r="13" fill="none" stroke="#0B2545" stroke-width="2"/>
+        <text x="${x}" y="418" text-anchor="middle" font-size="8.5" fill="#4A5A75" font-family="monospace">${panel.voltage}/${item.childVoltage}V</text>
+      `;
+    } else if(item.kind === 'panel'){
+      symbol = `
+        <rect x="${x-24}" y="356" width="48" height="44" fill="white" stroke="#0B2545" stroke-width="2"/>
+        <line x1="${x-24}" y1="366" x2="${x+24}" y2="366" stroke="#0B2545" stroke-width="2"/>
+        <line x1="${x-14}" y1="376" x2="${x+14}" y2="376" stroke="#0B2545" stroke-width="1.2"/>
+        <line x1="${x-14}" y1="384" x2="${x+14}" y2="384" stroke="#0B2545" stroke-width="1.2"/>
+        <line x1="${x-14}" y1="392" x2="${x+14}" y2="392" stroke="#0B2545" stroke-width="1.2"/>
+      `;
+    } else if(item.isMotor){
+      symbol = `<circle cx="${x}" cy="380" r="20" fill="white" stroke="#0B2545" stroke-width="2"/><text x="${x}" y="386" text-anchor="middle" font-size="16" font-weight="700" fill="#0B2545">M</text>`;
+    } else if(item.isChiller){
+      symbol = `<rect x="${x-20}" y="360" width="40" height="40" fill="white" stroke="#0B2545" stroke-width="2"/><text x="${x}" y="388" text-anchor="middle" font-size="22" fill="#0B2545">❄</text>`;
+    } else {
+      symbol = `<rect x="${x-20}" y="360" width="40" height="40" fill="white" stroke="#0B2545" stroke-width="2"/><text x="${x}" y="384" text-anchor="middle" font-size="11" fill="#0B2545">${item.isLighting?'إنارة':'حمل'}</text>`;
+    }
+
+    feeders += `
+      <line x1="${x}" y1="${busY}" x2="${x}" y2="240" stroke="#0B2545" stroke-width="2"/>
+      <rect x="${x-14}" y="240" width="28" height="34" fill="#F7F5EF" stroke="#0B2545" stroke-width="2"/>
+      <line x1="${x-10}" y1="270" x2="${x+10}" y2="244" stroke="#0B2545" stroke-width="2"/>
+      ${(item.isMotor||item.isChiller) ? svgRelayTag(x+14, 257, '49/51') : ''}
+      ${isXfmrLink ? svgCT(x-28, 300) : ''}
+      ${isXfmrLink ? svgRelayTag(x+14, 300, '87T') : ''}
+      <line x1="${x}" y1="274" x2="${x}" y2="356" stroke="#0B2545" stroke-width="2"/>
+      ${symbol}
+      <text x="${x}" y="300" text-anchor="middle" font-size="10" fill="#4A5A75" font-family="Roboto Mono, monospace" class="ann">${item.breaker}A</text>
+      <text x="${x}" y="315" text-anchor="middle" font-size="10" fill="#4A5A75" font-family="Roboto Mono, monospace" class="ann">${item.cableSize}mm² / ${item.cableLength}m</text>
+      <text x="${x}" y="415" text-anchor="middle" font-size="11" font-weight="700" fill="#16233B" class="ann">${item.kind==='panel'?'↳ ':''}${escapeHtml(item.name)}</text>
+      <text x="${x}" y="430" text-anchor="middle" font-size="10" fill="#4A5A75" font-family="Roboto Mono, monospace">${item.kind==='panel' ? 'لوحة فرعية · '+item.kw+' kW' : item.kw+' kW'}</text>
+      ${item.standby? `<text x="${x}" y="444" text-anchor="middle" font-size="9" fill="#C17817">احتياطي</text>`:''}
+    `;
+  });
+
+  const busLineEnd = Math.max(srcX + 40, startX + (items.length-1)*feederSpacing + 40);
+
+  // Source section: transformer/utility (main panel) OR incoming feed from a parent panel (sub-panel)
+  let sourceBlock;
+  if(panel.sourceType === 'sub'){
+    const parentPanel = (State.currentProject && State.currentProject.panels || []).find(p => p.id === panel.parentPanelId);
+    const parentLabel = parentPanel ? parentPanel.name : 'لوحة أم غير محددة';
+    sourceBlock = `
+      <text x="${srcX}" y="14" text-anchor="middle" font-size="12" font-weight="700" fill="#0B2545">من: ${escapeHtml(parentLabel)}</text>
+      <line x1="${srcX}" y1="24" x2="${srcX}" y2="116" stroke="#0B2545" stroke-width="2"/>
+      <polygon points="${srcX},120 ${srcX-8},106 ${srcX+8},106" fill="#0B2545"/>
+    `;
+  } else {
+    sourceBlock = `
+      <text x="${srcX}" y="14" text-anchor="middle" font-size="12" font-weight="700" fill="#0B2545">المصدر: محول ${panel.transformerKVA} kVA</text>
+      ${svgLightningArrester(srcX+6, 20)}
+      <line x1="${srcX}" y1="24" x2="${srcX}" y2="46" stroke="#0B2545" stroke-width="2"/>
+      <polygon points="${srcX},50 ${srcX-9},34 ${srcX+9},34" fill="none" stroke="#0B2545" stroke-width="2"/>
+      <circle cx="${srcX}" cy="62" r="11" fill="none" stroke="#0B2545" stroke-width="2"/>
+      <circle cx="${srcX}" cy="80" r="11" fill="none" stroke="#0B2545" stroke-width="2"/>
+      <line x1="${srcX}" y1="91" x2="${srcX}" y2="120" stroke="#0B2545" stroke-width="2"/>
+      ${svgDisconnector(srcX, 91, 118)}
+    `;
+  }
+
+  return `
+  <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" style="background:#FBFAF6;">
+    <defs>
+      <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+        <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#E3EAF2" stroke-width="1"/>
+      </pattern>
+    </defs>
+    <style>
+      /* The holder around this SVG is forced dir="ltr" so the diagram lays out left-to-right;
+         without this, mixed Arabic + unit text (e.g. "محول 630 kVA") renders with the words
+         scrambled/reversed. unicode-bidi:plaintext makes each text node pick its own direction
+         from its first strong character, independent of the container. */
+      text{unicode-bidi:plaintext;}
+      .ann{paint-order:stroke; stroke:#FBFAF6; stroke-width:3px; stroke-linejoin:round;}
+    </style>
+    <rect width="${width}" height="${height}" fill="url(#grid)"/>
+    <rect x="4" y="4" width="${width-8}" height="${height-8}" fill="none" stroke="#0B2545" stroke-width="2"/>
+
+    <!-- Source -->
+    ${sourceBlock}
+
+    <!-- Incomer breaker -->
+    <rect x="${srcX-14}" y="120" width="28" height="34" fill="#F7F5EF" stroke="#0B2545" stroke-width="2"/>
+    <line x1="${srcX-10}" y1="150" x2="${srcX+10}" y2="124" stroke="#0B2545" stroke-width="2"/>
+    ${svgCT(srcX-28, 137)}
+    ${svgRelayTag(srcX+14, 137, '50/51')}
+    <line x1="${srcX}" y1="154" x2="${srcX}" y2="${busY}" stroke="#0B2545" stroke-width="2"/>
+    <text x="${srcX}" y="169" text-anchor="middle" font-size="9" fill="#4A5A75" font-family="Roboto Mono, monospace">القاطع الرئيسي ${summary.incomerBreaker}A</text>
+    <text x="${srcX}" y="181" text-anchor="middle" font-size="9" fill="#4A5A75" font-family="Roboto Mono, monospace">${summary.incomerCableSize}mm² / ${panel.incomerCableLength}m</text>
+
+    <!-- Bus bar -->
+    <line x1="${srcX}" y1="${busY}" x2="${busLineEnd}" y2="${busY}" stroke="#0B2545" stroke-width="4"/>
+    <text x="${srcX+22}" y="${busY-10}" font-size="11" font-weight="700" fill="#0B2545" text-anchor="start">${escapeHtml(panel.name)} — ${panel.voltage}V</text>
+
+    ${feeders}
+
+    <!-- Title block -->
+    ${buildTitleBlockSvg(width-320, height-86, 310, 78, {
+      project: State.currentProject,
+      drawingTitle: 'مخطط أحادي الخط — لوحة ' + escapeHtml(panel.name),
+      extraLine: 'Isc تقريبي عند القاطع الرئيسي: ' + summary.iscKA + ' kA'
+    })}
+  </svg>`;
+}
+
+/* ============================== UTILS ============================== */
+
+function num(v, fallback){ const n = parseFloat(v); return isNaN(n) ? fallback : n; }
+
+// Replaces every native <select> under `root` with a custom-built dropdown. The original
+// <select> stays in the DOM (hidden) as the source of truth — clicking a custom option just
+// sets its value and dispatches a real 'change' event, so every existing handler wired to
+// these selects (via data-f attributes, .onchange, etc.) keeps working unmodified.
+function enhanceSelects(root){
+  root.querySelectorAll('select:not([data-enhanced])').forEach(sel=>{
+    sel.dataset.enhanced = '1';
+    sel.style.display = 'none';
+
+    const wrap = document.createElement('div');
+    wrap.className = 'csel-wrap';
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'csel-btn';
+
+    const list = document.createElement('div');
+    list.className = 'csel-list';
+    list.style.display = 'none';
+
+    function currentLabel(){
+      const opt = sel.options[sel.selectedIndex];
+      return opt ? opt.textContent : '';
+    }
+    function renderButton(){
+      btn.innerHTML = `<span class="csel-label">${escapeHtml(currentLabel())}</span><span class="csel-arrow">▾</span>`;
+    }
+    function appendOption(container, opt){
+      const item = document.createElement('div');
+      item.className = 'csel-item' + (opt.value===sel.value ? ' active' : '');
+      item.textContent = opt.textContent;
+      item.onclick = (e)=>{
+        e.stopPropagation();
+        sel.value = opt.value;
+        renderButton();
+        list.style.display = 'none';
+        sel.dispatchEvent(new Event('change', {bubbles:true}));
+      };
+      container.appendChild(item);
+    }
+    function buildList(){
+      list.innerHTML = '';
+      Array.from(sel.children).forEach(child=>{
+        if(child.tagName==='OPTGROUP'){
+          const g = document.createElement('div');
+          g.className = 'csel-group';
+          g.textContent = child.label;
+          list.appendChild(g);
+          Array.from(child.children).forEach(opt=>appendOption(list, opt));
+        } else if(child.tagName==='OPTION'){
+          appendOption(list, child);
+        }
+      });
+    }
+
+    renderButton();
+    btn.onclick = (e)=>{
+      e.stopPropagation();
+      document.querySelectorAll('.csel-list').forEach(l=>{ if(l!==list) l.style.display='none'; });
+      buildList();
+      list.style.display = list.style.display==='none' ? 'block' : 'none';
+    };
+
+    wrap.appendChild(btn);
+    wrap.appendChild(list);
+    sel.insertAdjacentElement('afterend', wrap);
+  });
+}
+document.addEventListener('click', ()=>{
+  document.querySelectorAll('.csel-list').forEach(l=> l.style.display='none');
+});
+function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeAttr(s){ return escapeHtml(s); }
+
+/* ============================== BOOT ============================== */
+init();
+</script>
+</body>
+</html>
